@@ -45,7 +45,7 @@ for i, item in enumerate(scene):
         item.set_cp("category_id", 0)
         item.set_shading_mode("AUTO")
 
-object_path = "Blender_Files/Honeycomb Cup for HC wall.stl"
+object_path = "Blender_Files/Honeycomb NEW DOUBLE Wall pliers-cutter.stl"
 # test_obj = bproc.loader.load_obj(object_path)
 bpy.ops.import_mesh.stl(filepath=object_path)
 imported_objects = bpy.context.selected_objects
@@ -229,12 +229,15 @@ def place_obj1_on_top_of_obj2(obj1, obj2):
     # Get min and max Z values for each object
     min_z1 = min(v.z for v in bbox1)
     max_z2 = max(v.z for v in bbox2)
-
+    print(min_z1, max_z2)
     # Calculate the required Z offset to place obj1 on top of obj2
     offset_z = max_z2 - min_z1
 
+    current_pose = obj1.location
+    obj1.location = (current_pose.x, current_pose.y, current_pose.z + offset_z)
     # Move obj1 in Z direction by the calculated offset
-    obj1.location.z += offset_z
+    # obj1.location.z += offset_z
+    # bpy.context.view_layer.update()
 
     print(f"Placed {obj1.name} on top of {obj2.name}")
 
@@ -329,18 +332,18 @@ init()
 
 
 ## Switch the viewport to camera view
-# for area in bpy.context.screen.areas:
-#     if area.type == 'VIEW_3D':  # Ensure it's the 3D viewport
-#         for space in area.spaces:
-#             if space.type == 'VIEW_3D':
-#                 space.region_3d.view_perspective = 'CAMERA'
-#                 break
-# bpy.context.view_layer.update()
+for area in bpy.context.screen.areas:
+    if area.type == 'VIEW_3D':  # Ensure it's the 3D viewport
+        for space in area.spaces:
+            if space.type == 'VIEW_3D':
+                space.region_3d.view_perspective = 'CAMERA'
+                break
+bpy.context.view_layer.update()
 
 place_obj1_on_top_of_obj2(train_object, greenscreen.blender_obj)
 point_camera_at_object(bpy.context.scene.camera, train_object)
 
-render_scene()
+# render_scene()
 
 # try:
 #     count = len(os.listdir("examples/part_2/coco_data/images"))
