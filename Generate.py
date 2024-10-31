@@ -10,7 +10,7 @@ import sys
 
 bproc.init()
 # Load your scene while preserving settings
-scene = bproc.loader.load_blend("Blender_Files/Scene_Main.blend")
+scene = bproc.loader.load_blend("Blender_Files/Scene_Main_Temp.blend")
 
 bpy.context.scene.cycles.samples = 2048
 bpy.context.scene.cycles.use_light_tree = True
@@ -24,25 +24,69 @@ bpy.context.scene.cycles.use_spatial_splits = False
 bpy.context.scene.cycles.use_persistent_data = False
 bpy.context.scene.view_settings.exposure = -3
 
-# # greenscreen = bpy.data.objects['GreenScreen']
-# # greenscreen = bproc.filter.one_by_attr(scene, "name", "GreenScreen")
+greenscreen = bpy.data.objects['GreenScreen']
+greenscreen = bproc.filter.one_by_attr(scene, "name", "GreenScreen")
+
 train_object = ""
 train_object_name = "Train_Honeycomb_Wall_Tool"
 for i, item in enumerate(scene):
-        if item.get_name().startswith("Train_"):
-            if item.get_name().startswith(train_object_name):
-                item.set_cp("category_id", i + 1)
-                train_object = item
-            else:
-                item.set_cp("category_id", 0)
-                item.hide()
-                item.blender_obj.hide_viewport = True
-        # elif item.get_name().startswith("GreenScreen"):
-        #     greenscreen = item
-        #     item.set_cp("category_id", 0)
-        else:
-            item.set_cp("category_id", 0)
+        # if item.get_name().startswith("Train_"):
+        #     if item.get_name().startswith(train_object_name):
+        #         item.set_cp("category_id", i + 1)
+        #         train_object = item
+        #     else:
+        #         item.set_cp("category_id", 0)
+        #         item.hide()
+        #         item.blender_obj.hide_viewport = True
+        # # elif item.get_name().startswith("GreenScreen"):
+        # #     greenscreen = item
+        # #     item.set_cp("category_id", 0)
+        # else:
+        item.set_cp("category_id", 0)
         item.set_shading_mode("AUTO")
+
+object_path = "Blender_Files/Honeycomb Cup for HC wall.stl"
+# test_obj = bproc.loader.load_obj(object_path)
+bpy.ops.import_mesh.stl(filepath=object_path)
+imported_objects = bpy.context.selected_objects
+
+for obj in imported_objects:
+    obj.name = train_object_name
+
+    bpy.ops.object.mode_set(mode='OBJECT')
+    bpy.ops.object.select_all(action='DESELECT')
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='BOUNDS')
+
+    # Get all vertices
+    verts = obj.data.vertices
+    if not verts:
+        raise ValueError(f"Object {obj.name} has no vertices.")
+
+    # Calculate centroid
+    centroid = [0, 0, 0]
+    for v in verts:
+        centroid[0] += v.co.x
+        centroid[1] += v.co.y
+        centroid[2] += v.co.z
+    num_verts = len(verts)
+    centroid = [c / num_verts for c in centroid]
+
+    # Shift all vertices so that centroid is at the origin
+    for v in verts:
+        v.co.x -= centroid[0]
+        v.co.y -= centroid[1]
+        v.co.z -= centroid[2]
+
+    # Update mesh
+    obj.data.update()
+    
+    train_object = obj
+    break
+
+train_object["category_id"] = 1
+train_object.scale = (0.001, 0.001, 0.001)
 
 
 radius = 0.3
@@ -64,7 +108,8 @@ def init():
     set_light()
 
     set_object_random()
-    set_object_color("#FFFFFF", train_object.get_name())
+    set_object_color("#FFFFFF", train_object_name)
+
 
 def set_object_color(new_color, object_name):
     obj = bpy.data.objects.get(object_name)
@@ -112,7 +157,7 @@ def get_random_pose():
     # rotation = rotation_quaternion.to_euler()
 
     # return [[x, y, z], [rotation.x, rotation.y, rotation.z], direction]
-    train_object_dimensions = train_object.blender_obj.dimensions
+    train_object_dimensions = train_object.dimensions
     max_dim = max(train_object_dimensions.x, train_object_dimensions.y)
     half_width_x = (0.46 - max_dim) / 2  # Half of the width along the x-axis
     half_width_y = (0.5 - max_dim) / 2   # Half of the height along the y-axis
@@ -123,11 +168,11 @@ def get_random_pose():
 
     roll = random.uniform(0, 2 * math.pi)
 
-    return [[x, y, 0], [0, 0, roll]]
+    return [[x, y, 0.07], [0, 0, roll]]
 
 def set_camera(pose=[[0, -0.23, 0.6], [0.33163, 0, 0]]):
-    pose = bproc.math.build_transformation_mat(pose[0], pose[1])
-    bproc.camera.add_camera_pose(pose, 0)
+    pose_matrix = bproc.math.build_transformation_mat(pose[0], pose[1])
+    bproc.camera.add_camera_pose(pose_matrix)
     # bproc.camera.set_resolution(640, 480)
     bproc.camera.set_intrinsics_from_blender_params(lens=0.959931, lens_unit="FOV")
 
@@ -141,9 +186,11 @@ def set_light(pose=[[0, 0, 0.7], [0, 0, 0]]):
     light1.set_energy(12)
 
 def set_object(pose=[[0, 0, 0], [0, 0, 0]]):
-    train_object.set_location(pose[0])
-    train_object.set_rotation_euler(pose[1])
-
+    # train_object.set_location(pose[0])
+    # train_object.set_rotation_euler(pose[1])
+    train_object.location = pose[0]
+    train_object.rotation_euler = pose[1]
+    return
 # # def set_green_screen(pose):
 # #     green_screen_position = -mathutils.Vector(pose[0]).normalized() * radius
 # #     greenscreen.set_location(green_screen_position)
@@ -155,8 +202,108 @@ def set_object(pose=[[0, 0, 0], [0, 0, 0]]):
 #     set_camera(pose)
 #     set_light(pose)
 
+def objects_touching_z(obj1, obj2):
+    # Get world-space bounding box for obj1 (train_object) and obj2 (greenscreen)
+    bbox1 = [obj1.matrix_world @ mathutils.Vector(corner) for corner in obj1.bound_box]
+    bbox2 = [obj2.matrix_world @ mathutils.Vector(corner) for corner in obj2.bound_box]
+    
+    # Get min and max Z values for each object
+    min_z1 = min([v.z for v in bbox1])
+    max_z1 = max([v.z for v in bbox1])
+    min_z2 = min([v.z for v in bbox2])
+    max_z2 = max([v.z for v in bbox2])
+    
+    # Check if they are touching along the Z-axis
+    # Assuming obj1 is above obj2
+    touching = min_z1 <= max_z2 and max_z1 >= min_z2
+    print(max_z1, min_z1)
+    print(max_z2, min_z2)
+
+    return touching
+
+def place_obj1_on_top_of_obj2(obj1, obj2):
+    # Get world-space bounding box for obj1 and obj2
+    bbox1 = [obj1.matrix_world @ mathutils.Vector(corner) for corner in obj1.bound_box]
+    bbox2 = [obj2.matrix_world @ mathutils.Vector(corner) for corner in obj2.bound_box]
+    
+    # Get min and max Z values for each object
+    min_z1 = min(v.z for v in bbox1)
+    max_z2 = max(v.z for v in bbox2)
+
+    # Calculate the required Z offset to place obj1 on top of obj2
+    offset_z = max_z2 - min_z1
+
+    # Move obj1 in Z direction by the calculated offset
+    obj1.location.z += offset_z
+
+    print(f"Placed {obj1.name} on top of {obj2.name}")
+
+def setup_physics_simulation():
+    # Set up train object as an active rigid body
+    train_object.select_set(True)
+    bpy.context.view_layer.objects.active = train_object
+    bpy.ops.rigidbody.object_add()
+    train_object.rigid_body.type = 'ACTIVE'
+    train_object.rigid_body.collision_shape = 'CONVEX_HULL'
+    train_object.rigid_body.mass = 1.0  # Set mass
+
+    
+
+    # train_object.rigid_body.restitution = 0.0  # Set bounciness to zero
+    # train_object.rigid_body.friction = 0.8  # Increase friction to prevent sliding
+    # train_object.rigid_body.linear_damping = 0.5  # Damping to reduce movement after collision
+    # train_object.rigid_body.angular_damping = 0.5
+
+    # Set up GreenScreen as a passive rigid body
+    if greenscreen is not None:
+        greenscreen_obj = bpy.data.objects.get(greenscreen.get_name())
+        greenscreen_obj.select_set(True)
+        bpy.context.view_layer.objects.active = greenscreen_obj
+        bpy.ops.rigidbody.object_add()
+        greenscreen_obj.rigid_body.type = 'PASSIVE'
+        greenscreen_obj.rigid_body.collision_shape = 'MESH'
+        greenscreen_obj.rigid_body.mass = 0.0
+
+
+def bake_physics_simulation():
+    # Set the physics scene properties
+    bpy.context.scene.rigidbody_world.time_scale = 1
+    bpy.context.scene.frame_start = 1
+    bpy.context.scene.frame_end = 120  # Number of frames to simulate
+
+    # Bake the simulation
+    bpy.context.view_layer.objects.active = train_object
+    bpy.ops.ptcache.bake_all(bake=True)
+
+    # Move to the last frame to access final position
+    final_frame = bpy.context.scene.frame_end
+    bpy.context.scene.frame_set(final_frame)
+
+    # Set start and end frames to the last frame for single-frame render
+    bpy.context.scene.frame_start = final_frame
+    bpy.context.scene.frame_end = final_frame
+
+def point_camera_at_object(camera_obj, target_object):
+    # Get the current camera location from BlenderProc
+    camera_location = bproc.camera.get_camera_pose()[:3, 3]  # Extract the location vector
+
+    # Calculate the center of the target object in world space
+    obj_center = sum((target_object.matrix_world @ mathutils.Vector(corner) for corner in target_object.bound_box), mathutils.Vector()) / 8
+
+    # Calculate the rotation required for the camera to look at the object's center
+    direction = (obj_center - mathutils.Vector(camera_location)).normalized()
+    rotation_quaternion = direction.to_track_quat('-Z', 'Y')
+    rotation_euler = rotation_quaternion.to_euler()
+
+    # Build the transformation matrix for the camera pose (fixed location with new rotation)
+    camera_pose = bproc.math.build_transformation_mat(camera_location, rotation_euler)
+
+    # Register the calculated camera pose with BlenderProc
+    bproc.camera.add_camera_pose(camera_pose, 0)
 
 def render_scene():
+    final_frame = bpy.context.scene.frame_end
+    bpy.context.scene.frame_set(final_frame)
     # Render the scene
     bproc.renderer.enable_experimental_features()
     bproc.renderer.enable_normals_output()
@@ -173,26 +320,38 @@ def render_scene():
                                         colors=data["colors"],
                                         color_file_format="JPEG")
     # bproc.writer.write_hdf5("output/", data)
-init()
 
-# Switch the viewport to camera view
+
+init()
+# setup_physics_simulation()
+# set_object_random()
+# bake_physics_simulation()
+
+
+## Switch the viewport to camera view
 # for area in bpy.context.screen.areas:
 #     if area.type == 'VIEW_3D':  # Ensure it's the 3D viewport
 #         for space in area.spaces:
 #             if space.type == 'VIEW_3D':
 #                 space.region_3d.view_perspective = 'CAMERA'
 #                 break
-# # bpy.context.view_layer.update()
-try:
-    count = len(os.listdir("examples/part_2/coco_data/images"))
-except:
-    count = 0
+# bpy.context.view_layer.update()
 
-if count < 2000:
-    set_object_random()
-    render_scene()
-    sys.exit(1)
-else:
-    sys.exit(69)
+place_obj1_on_top_of_obj2(train_object, greenscreen.blender_obj)
+point_camera_at_object(bpy.context.scene.camera, train_object)
+
+render_scene()
+
+# try:
+#     count = len(os.listdir("examples/part_2/coco_data/images"))
+# except:
+#     count = 0
+
+# if count < 2000:
+#     set_object_random()
+#     render_scene()
+#     sys.exit(1)
+# else:
+#     sys.exit(69)
 
 
