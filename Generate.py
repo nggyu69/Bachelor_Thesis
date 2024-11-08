@@ -8,6 +8,11 @@ import mathutils
 import time
 import sys
 
+instance_id = None
+for i, arg in enumerate(sys.argv):
+    if arg == '--instance_id':
+        instance_id = int(sys.argv[i + 1])
+
 bproc.init()
 # Load your scene while preserving settings
 scene = bproc.loader.load_blend("Blender_Files/Scene_Main_Temp.blend")
@@ -23,6 +28,7 @@ bpy.context.scene.render.use_simplify = False
 bpy.context.scene.cycles.use_spatial_splits = False
 bpy.context.scene.cycles.use_persistent_data = False
 bpy.context.scene.view_settings.exposure = -3
+
 
 greenscreen = bpy.data.objects['GreenScreen']
 greenscreen = bproc.filter.one_by_attr(scene, "name", "GreenScreen")
@@ -317,7 +323,7 @@ def render_scene():
     data = bproc.renderer.render()
 
     # Write the rendering into an hdf5 file
-    bproc.writer.write_coco_annotations(os.path.join("examples/part_2", 'coco_data'),
+    bproc.writer.write_coco_annotations(os.path.join(f"examples/part_2/{instance_id}", 'coco_data'),
                                         instance_segmaps=data["instance_segmaps"],
                                         instance_attribute_maps=data["instance_attribute_maps"],
                                         colors=data["colors"],
@@ -342,7 +348,7 @@ bpy.context.view_layer.update()
 
 place_obj1_on_top_of_obj2(train_object, greenscreen.blender_obj)
 point_camera_at_object(bpy.context.scene.camera, train_object)
-
+# print(f"Instance id {instance_id}")
 # render_scene()
 
 # try:
