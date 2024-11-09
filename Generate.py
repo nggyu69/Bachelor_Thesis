@@ -7,6 +7,7 @@ import math
 import mathutils
 import time
 import sys
+import multiprocessing
 
 instance_id = None
 for i, arg in enumerate(sys.argv):
@@ -99,6 +100,7 @@ radius = 0.3
 light1 = ""
 light1_offset = 1.0
 
+touch_z = 0.07
 
 def init():
     global light1
@@ -174,9 +176,9 @@ def get_random_pose():
 
     roll = random.uniform(0, 2 * math.pi)
 
-    return [[x, y, 0.07], [0, 0, roll]]
+    return [[x, y, touch_z], [0, 0, roll]]
 
-def set_camera(pose=[[0, -0.23, 0.6], [0.33163, 0, 0]]):
+def set_camera(pose=[[0, 0, 0.6], [0.33163, 0, 0]]):
     pose_matrix = bproc.math.build_transformation_mat(pose[0], pose[1])
     bproc.camera.add_camera_pose(pose_matrix)
     # bproc.camera.set_resolution(640, 480)
@@ -197,37 +199,9 @@ def set_object(pose=[[0, 0, 0], [0, 0, 0]]):
     train_object.location = pose[0]
     train_object.rotation_euler = pose[1]
     return
-# # def set_green_screen(pose):
-# #     green_screen_position = -mathutils.Vector(pose[0]).normalized() * radius
-# #     greenscreen.set_location(green_screen_position)
-# #     greenscreen.set_rotation_euler(pose[1])
-
-# def set_all_random():
-#     pose = get_random_pose()
-
-#     set_camera(pose)
-#     set_light(pose)
-
-def objects_touching_z(obj1, obj2):
-    # Get world-space bounding box for obj1 (train_object) and obj2 (greenscreen)
-    bbox1 = [obj1.matrix_world @ mathutils.Vector(corner) for corner in obj1.bound_box]
-    bbox2 = [obj2.matrix_world @ mathutils.Vector(corner) for corner in obj2.bound_box]
-    
-    # Get min and max Z values for each object
-    min_z1 = min([v.z for v in bbox1])
-    max_z1 = max([v.z for v in bbox1])
-    min_z2 = min([v.z for v in bbox2])
-    max_z2 = max([v.z for v in bbox2])
-    
-    # Check if they are touching along the Z-axis
-    # Assuming obj1 is above obj2
-    touching = min_z1 <= max_z2 and max_z1 >= min_z2
-    print(max_z1, min_z1)
-    print(max_z2, min_z2)
-
-    return touching
 
 def place_obj1_on_top_of_obj2(obj1, obj2):
+    global touch_z
     # Get world-space bounding box for obj1 and obj2
     bbox1 = [obj1.matrix_world @ mathutils.Vector(corner) for corner in obj1.bound_box]
     bbox2 = [obj2.matrix_world @ mathutils.Vector(corner) for corner in obj2.bound_box]
@@ -240,59 +214,15 @@ def place_obj1_on_top_of_obj2(obj1, obj2):
     offset_z = max_z2 - min_z1
 
     current_pose = obj1.location
-    obj1.location = (current_pose.x, current_pose.y, current_pose.z + offset_z)
+    obj1.location = (current_pose.x, current_pose.y, offset_z)
     # Move obj1 in Z direction by the calculated offset
     # obj1.location.z += offset_z
     # bpy.context.view_layer.update()
-
-    print(f"Placed {obj1.name} on top of {obj2.name}")
-
-def setup_physics_simulation():
-    # Set up train object as an active rigid body
-    train_object.select_set(True)
-    bpy.context.view_layer.objects.active = train_object
-    bpy.ops.rigidbody.object_add()
-    train_object.rigid_body.type = 'ACTIVE'
-    train_object.rigid_body.collision_shape = 'CONVEX_HULL'
-    train_object.rigid_body.mass = 1.0  # Set mass
-
-    
-
-    # train_object.rigid_body.restitution = 0.0  # Set bounciness to zero
-    # train_object.rigid_body.friction = 0.8  # Increase friction to prevent sliding
-    # train_object.rigid_body.linear_damping = 0.5  # Damping to reduce movement after collision
-    # train_object.rigid_body.angular_damping = 0.5
-
-    # Set up GreenScreen as a passive rigid body
-    if greenscreen is not None:
-        greenscreen_obj = bpy.data.objects.get(greenscreen.get_name())
-        greenscreen_obj.select_set(True)
-        bpy.context.view_layer.objects.active = greenscreen_obj
-        bpy.ops.rigidbody.object_add()
-        greenscreen_obj.rigid_body.type = 'PASSIVE'
-        greenscreen_obj.rigid_body.collision_shape = 'MESH'
-        greenscreen_obj.rigid_body.mass = 0.0
+    touch_z = offset_z
+    print(f"Placed {obj1.name} on top of {obj2.name} at Z = {obj1.location.z}")
 
 
-def bake_physics_simulation():
-    # Set the physics scene properties
-    bpy.context.scene.rigidbody_world.time_scale = 1
-    bpy.context.scene.frame_start = 1
-    bpy.context.scene.frame_end = 120  # Number of frames to simulate
-
-    # Bake the simulation
-    bpy.context.view_layer.objects.active = train_object
-    bpy.ops.ptcache.bake_all(bake=True)
-
-    # Move to the last frame to access final position
-    final_frame = bpy.context.scene.frame_end
-    bpy.context.scene.frame_set(final_frame)
-
-    # Set start and end frames to the last frame for single-frame render
-    bpy.context.scene.frame_start = final_frame
-    bpy.context.scene.frame_end = final_frame
-
-def point_camera_at_object(camera_obj, target_object):
+def point_camera_at_object(camera_obj, target_object, frame=0):
     # Get the current camera location from BlenderProc
     camera_location = bproc.camera.get_camera_pose()[:3, 3]  # Extract the location vector
 
@@ -308,11 +238,9 @@ def point_camera_at_object(camera_obj, target_object):
     camera_pose = bproc.math.build_transformation_mat(camera_location, rotation_euler)
 
     # Register the calculated camera pose with BlenderProc
-    bproc.camera.add_camera_pose(camera_pose, 0)
+    bproc.camera.add_camera_pose(camera_pose, frame=frame)
 
 def render_scene():
-    final_frame = bpy.context.scene.frame_end
-    bpy.context.scene.frame_set(final_frame)
     # Render the scene
     bproc.renderer.enable_experimental_features()
     bproc.renderer.enable_normals_output()
@@ -332,24 +260,38 @@ def render_scene():
 
 
 init()
-# setup_physics_simulation()
-# set_object_random()
-# bake_physics_simulation()
-
-
-## Switch the viewport to camera view
-for area in bpy.context.screen.areas:
-    if area.type == 'VIEW_3D':  # Ensure it's the 3D viewport
-        for space in area.spaces:
-            if space.type == 'VIEW_3D':
-                space.region_3d.view_perspective = 'CAMERA'
-                break
-bpy.context.view_layer.update()
 
 place_obj1_on_top_of_obj2(train_object, greenscreen.blender_obj)
-point_camera_at_object(bpy.context.scene.camera, train_object)
+
+for i in range(100):
+    
+
+    # Set random object position and rotation
+    set_object_random()  # This updates the train_object position and rotation
+    
+    # Insert keyframe for object's location and rotation
+    train_object.keyframe_insert(data_path="location", frame=i)
+    train_object.keyframe_insert(data_path="rotation_euler", frame=i)
+    bpy.context.view_layer.update()
+    # Set camera to look at the object and insert keyframe
+    point_camera_at_object(bpy.context.scene.camera, train_object, frame=i)
+    
+# Render frames for each keyframe after setting up the scene
+render_scene()
+
+
+# ## Switch the viewport to camera view
+# for area in bpy.context.screen.areas:
+#     if area.type == 'VIEW_3D':  # Ensure it's the 3D viewport
+#         for space in area.spaces:
+#             if space.type == 'VIEW_3D':
+#                 space.region_3d.view_perspective = 'CAMERA'
+#                 break
+# bpy.context.view_layer.update()
+
+
 # print(f"Instance id {instance_id}")
-# render_scene()
+
 
 # try:
 #     count = len(os.listdir("examples/part_2/coco_data/images"))
