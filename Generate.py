@@ -11,8 +11,8 @@ import multiprocessing
 
 instance_id = None
 for i, arg in enumerate(sys.argv):
-    if arg == '--instance_id':
-        instance_id = int(sys.argv[i + 1])
+    if arg == '--num_images':
+        num_images = int(sys.argv[i + 1])
 
 bproc.init()
 # Load your scene while preserving settings
@@ -35,7 +35,7 @@ greenscreen = bpy.data.objects['GreenScreen']
 greenscreen = bproc.filter.one_by_attr(scene, "name", "GreenScreen")
 
 train_object = ""
-train_object_name = "Train_Honeycomb_Wall_Tool"
+train_object_name = "Train_Honeycomb_Wall_Pliers_Cutter"
 for i, item in enumerate(scene):
         # if item.get_name().startswith("Train_"):
         #     if item.get_name().startswith(train_object_name):
@@ -116,37 +116,26 @@ def init():
     set_light()
 
     set_object_random()
-    set_object_color("#FFFFFF", train_object_name)
-
+    # set_object_color("#FFFFFF", train_object_name)
+    set_object_color("#0f0f13", train_object_name)
 
 def set_object_color(new_color, object_name):
     obj = bpy.data.objects.get(object_name)
-
-    new_color = tuple(int(new_color.lstrip("#")[i:i+2], 16) / 255.0 for i in (0, 2, 4))
-    if obj.active_material:
-        # Get the material
+    if obj:
+        # Convert the color from hex to RGB format
+        new_color = tuple(int(new_color.lstrip("#")[i:i+2], 16) / 255.0 for i in (0, 2, 4))
         
-        mat = obj.active_material
-        # Check if the material is the one we're looking for
-        if mat.name.startswith("Material"):
-            # Ensure the material uses nodes
-            if mat.use_nodes:
-                # Get the node tree of the material
-                nodes = mat.node_tree.nodes
-                print(nodes)
-                # Find the shader node (it might be called something else, so check)
-                shader_node = None
-                for node in nodes:
+        # Ensure the object has a material, create a new one if not
+        if not obj.active_material:
+            mat = bpy.data.materials.new(name="TrainMaterial")
+            obj.active_material = mat
+        else:
+            mat = obj.active_material
 
-                    if node.name == '3D Print Filament':  # Principled BSDF or other type
-                        shader_node = node
-                        break
-                
-                if shader_node:
-                    # Set the Base Color of the shader node
-                    print(new_color)
-                    shader_node.inputs["Color"].default_value = (*new_color, 1)
-                    print(f"Changed color of {obj.name} to {new_color}")
+        # Set the material's diffuse color (base color)
+        mat.diffuse_color = (*new_color, 1)  # Adding alpha value of 1 for full opacity
+
+        print(f"Changed color of {obj.name} to {new_color}")
 
 def set_object_random():
     set_object(get_random_pose())
@@ -251,7 +240,7 @@ def render_scene():
     data = bproc.renderer.render()
 
     # Write the rendering into an hdf5 file
-    bproc.writer.write_coco_annotations(os.path.join(f"examples/part_2/{instance_id}", 'coco_data'),
+    bproc.writer.write_coco_annotations(os.path.join(f"gen_data/{train_object_name}"),
                                         instance_segmaps=data["instance_segmaps"],
                                         instance_attribute_maps=data["instance_attribute_maps"],
                                         colors=data["colors"],
@@ -263,9 +252,7 @@ init()
 
 place_obj1_on_top_of_obj2(train_object, greenscreen.blender_obj)
 
-for i in range(100):
-    
-
+for i in range(num_images):
     # Set random object position and rotation
     set_object_random()  # This updates the train_object position and rotation
     

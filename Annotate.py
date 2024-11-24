@@ -83,8 +83,75 @@ def resize_bounding_box(bbox, scale, pad_top, pad_left):
         resized_bbox.append((new_x, new_y))
     return resized_bbox
 
-path = "/home/reddy/Bachelor_Thesis/examples/part_2/coco_data"
-dataset_path = "/data/reddy/Bachelor_Thesis/dataset"
+def canny_edge(image, path):
+    # Convert image to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Apply Canny edge detection
+    edges = cv2.Canny(gray, threshold1=75, threshold2=75)
+
+    edges_color = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)  # Convert edges to BGR for stacking
+    # combined_image = np.hstack((image, edges_color))
+
+    cv2.imwrite(path, edges_color)
+
+def active_canny(image, path):
+    # Convert the image to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Compute the median of the pixel intensities
+    median_intensity = np.median(gray)
+
+    # Set lower and upper thresholds for Canny edge detection based on median intensity
+    # These constants can be adjusted for more or less sensitivity
+    sigma = 0.2
+    lower_threshold = int(max(0, (1.0 - sigma) * median_intensity))
+    upper_threshold = int(min(255, (1.0 + sigma) * median_intensity))
+
+    # Apply Canny edge detection with adaptive thresholds
+    edges = cv2.Canny(gray, lower_threshold, upper_threshold)
+
+    # Convert edges to BGR so it can be stacked with the original image
+    edges_color = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
+
+    # # Stack the original image and edge-detected image side by side
+    # combined_image = np.hstack((image, edges_color))
+
+    # Save the result
+    cv2.imwrite(path, edges_color)
+
+def hed_edge(image, path, net):
+    # Prepare the image for HED
+    (h, w) = image.shape[:2]
+    blob = cv2.dnn.blobFromImage(image, scalefactor=1.0, size=(w, h), mean=(104.00698793, 116.66876762, 122.67891434), swapRB=False, crop=False)
+
+    # Pass the image blob through the HED model
+    net.setInput(blob)
+
+    # Specify the layer names to capture intermediate outputs
+    layer_names = ['sigmoid-dsn1', 'sigmoid-dsn2', 'sigmoid-dsn3', 'sigmoid-dsn4', 'sigmoid-dsn5', 'sigmoid-fuse']
+    outputs = net.forward(layer_names)
+    
+    # Process and resize each output to match the original image dimensions
+    output_images = [(255 * cv2.resize(out[0, 0], (w, h))).astype("uint8") for out in outputs]
+
+    # Convert each edge map to BGR so it can be stacked with the original image
+    output_images_bgr = [cv2.cvtColor(out_img, cv2.COLOR_GRAY2BGR) for out_img in output_images]
+    # # Stack the original image and each of the intermediate outputs side by side
+    # combined_image = np.hstack([image] + output_images_bgr)
+
+    # Save the result
+    for i, output_image in enumerate(output_images_bgr):
+        #create path based on layer name
+
+        path = path.replace("PlAcEhOlDeR", str(i+1))
+        cv2.imwrite(path, output_image)
+        path = path.replace(f"/{str(i+1)}/", "/PlAcEhOlDeR/")
+    # cv2.imwrite(path, output_images_bgr[0])
+
+
+path = "/data/reddy/Bachelor_Thesis/part_2/coco_data"
+dataset_path = "/data/reddy/Bachelor_Thesis/dataset_honeycomb_tool"
 
 existing_images = []
 if os.path.exists(dataset_path + "/annotated_images"):
@@ -108,14 +175,24 @@ val_num = len(images) - train_num - test_num
 split_list = ["train" for i in range(train_num)] + ["test" for i in range(test_num)] + ["val" for i in range(val_num)]
 np.random.shuffle(split_list)
 
-os.makedirs(dataset_path + "/train/images", exist_ok=True)
-os.makedirs(dataset_path + "/test/images", exist_ok=True)
-os.makedirs(dataset_path + "/val/images", exist_ok=True)
-os.makedirs(dataset_path + "/train/labels", exist_ok=True)
-os.makedirs(dataset_path + "/test/labels", exist_ok=True)
-os.makedirs(dataset_path + "/val/labels", exist_ok=True)
 os.makedirs(dataset_path + "/annotated_images", exist_ok=True)
 os.makedirs(dataset_path + "/masked_images", exist_ok=True)
+
+for i in ["control", "canny", "active_canny"]:
+    os.makedirs(dataset_path + f"/{i}/train/images", exist_ok=True)
+    os.makedirs(dataset_path + f"/{i}/test/images", exist_ok=True)
+    os.makedirs(dataset_path + f"/{i}/val/images", exist_ok=True)
+    os.makedirs(dataset_path + f"/{i}/train/labels", exist_ok=True)
+    os.makedirs(dataset_path + f"/{i}/test/labels", exist_ok=True)
+    os.makedirs(dataset_path + f"/{i}/val/labels", exist_ok=True)
+
+for i in range(1, 6):
+    os.makedirs(dataset_path + "/HED/" + str(i) + "/train/images", exist_ok=True)
+    os.makedirs(dataset_path + "/HED/" + str(i) + "/test/images", exist_ok=True)
+    os.makedirs(dataset_path + "/HED/" + str(i) + "/val/images", exist_ok=True)
+    os.makedirs(dataset_path + "/HED/" + str(i) + "/train/labels", exist_ok=True)
+    os.makedirs(dataset_path + "/HED/" + str(i) + "/test/labels", exist_ok=True)
+    os.makedirs(dataset_path + "/HED/" + str(i) + "/val/labels", exist_ok=True)
 
 
 annotations_grouped = {}
@@ -125,6 +202,9 @@ for annotation in annotations:
         annotations_grouped[image_id] = []
     annotations_grouped[image_id].append(annotation)
 
+prototxt_path = 'Bachelor_Thesis/HED_Files/deploy.prototxt'
+caffemodel_path = 'Bachelor_Thesis/HED_Files/hed_pretrained_bsds.caffemodel'
+net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
 
 for image in annotations_grouped:
     if image in existing_images:
@@ -165,13 +245,21 @@ for image in annotations_grouped:
         draw_ov.bitmap((0, 0), mask, fill=(color[2], color[1], color[0], 64))
         mask_image = Image.alpha_composite(mask_image, overlay)
 
-    with open(f"{dataset_path}/{image_type}/labels/image_{image}.txt", "w") as f:
-        f.write(annotations_text)
+    for i in ["control", "canny", "active_canny"]:
+        with open(f"{dataset_path}/{i}/{image_type}/labels/image_{image}.txt", "w") as f:
+            f.write(annotations_text)
+    for i in range(1, 6):
+        with open(f"{dataset_path}/HED/{i}/{image_type}/labels/image_{image}.txt", "w") as f:
+            f.write(annotations_text)    
     
     mask_image.save(f"{dataset_path}/masked_images/masked_image_{image}.png")
     cv2.imwrite(f"{dataset_path}/annotated_images/annotated_image_{image}.jpg", annotated_image)
-    cv2.imwrite(f"{dataset_path}/{image_type}/images/image_{image}.jpg", resized_image)
-    
+
+    cv2.imwrite(f"{dataset_path}/control/{image_type}/images/image_{image}.jpg", resized_image)
+
+    canny_edge(resized_image, f"{dataset_path}/canny/{image_type}/images/image_{image}.jpg")
+    active_canny(resized_image, f"{dataset_path}/active_canny/{image_type}/images/image_{image}.jpg")
+    hed_edge(resized_image, f"{dataset_path}/HED/PlAcEhOlDeR/{image_type}/images/image_{image}.jpg",net)
     print("Done image", image)
 
 

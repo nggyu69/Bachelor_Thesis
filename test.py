@@ -61,7 +61,3 @@ stitched_image_path = os.path.join(output_dir, f'stitched_results_{image_dir.spl
 cv2.imwrite(stitched_image_path, stitched_image)
 
 print(f"Stitched {grid_size}x{grid_size} image saved at: {stitched_image_path}")
-
-
-
-

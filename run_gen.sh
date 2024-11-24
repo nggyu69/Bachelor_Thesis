@@ -27,16 +27,15 @@
 # Path to your Python script
 PYTHON_SCRIPT="Generate.py"
 
-# Number of parallel instances
-NUM_INSTANCES=5
+# Number of instances to run sequentially
+NUM_INSTANCES=786
 SECONDS=0
-# Run each instance in parallel
+
+# Run each instance sequentially
 for i in $(seq 1 $NUM_INSTANCES); do
-    # Run the BlenderProc script with the instance ID in the background
-    blenderproc run "$PYTHON_SCRIPT" --instance_id "$i" &
+    # Run the BlenderProc script with the instance ID
+    blenderproc run "$PYTHON_SCRIPT" --num_images "1"
 done
 
-# Wait for all background jobs to complete
-wait
 duration=$SECONDS
 echo "All instances completed in $((duration / 60)) minutes and $((duration % 60)) seconds."
