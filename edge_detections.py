@@ -2,26 +2,27 @@ import cv2
 import numpy as np
 import os
 
-
-def canny_edge(image):
+def canny_edge(image, path="", annotation=False):
     # Convert image to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # Apply Canny edge detection
     edges = cv2.Canny(gray, threshold1=75, threshold2=75)
 
-    # Stack the original and edge-detected images side by side
-    edges_color = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)  # Convert edges to BGR for stacking
-    # combined_image = np.hstack((image, edges_color))
+    edges_color = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
 
-    # Save the result
-    output_path = os.path.join(dataset_path, "canny", image_name)
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    cv2.imwrite(output_path, edges_color)
+    if path:
+        cv2.imwrite(path, edges_color)
+    
+    if annotation:
+        annotated_image = cv2.drawContours(edges_color, [annotation[1]], 0, (255, 255, 255), 1)
+        #split tail and head
+        path = f"{annotation[0]}/annotated_images/canny/" + os.path.split(path)[1]
+        
+        cv2.imwrite(f"{path}", annotated_image)
+    return edges_color
 
-    print(f"Saved the combined image with edges at: {output_path}")
-
-def active_canny(image):
+def active_canny(image, path="", annotation=False):
     # Convert the image to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -43,17 +44,22 @@ def active_canny(image):
     # # Stack the original image and edge-detected image side by side
     # combined_image = np.hstack((image, edges_color))
 
-    # Save the result
-    output_path = os.path.join(dataset_path, "active_canny", image_name)
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    cv2.imwrite(output_path, edges_color)
+    if path:
+        cv2.imwrite(path, edges_color)
 
-    print(f"Saved the combined image with adaptive Canny edges at: {output_path}")
-
-def hed_edge(image, net):
+    if annotation:
+        annotated_image = cv2.drawContours(edges_color, [annotation[1]], 0, (255, 255, 255), 1)
+        #split tail and head
+        path = f"{annotation[0]}/annotated_images/active_canny/" + os.path.split(path)[1]
+        
+        cv2.imwrite(f"{path}", annotated_image)
+    return edges_color
+ 
+def hed_edge(image, path="", annotation=False):
     # Prepare the image for HED
+
     (h, w) = image.shape[:2]
-    blob = cv2.dnn.blobFromImage(image, scalefactor=1.0, size=(w, h), mean=(104.00698793, 116.66876762, 122.67891434), swapRB=False, crop=False)
+    blob = cv2.dnn.blobFromImage(image, scalefactor=1.0, size=(640, 640), mean=(104.00698793, 116.66876762, 122.67891434), swapRB=False, crop=True)
 
     # Pass the image blob through the HED model
     net.setInput(blob)
@@ -64,39 +70,31 @@ def hed_edge(image, net):
     
     # Process and resize each output to match the original image dimensions
     output_images = [(255 * cv2.resize(out[0, 0], (w, h))).astype("uint8") for out in outputs]
-
+    
     # Convert each edge map to BGR so it can be stacked with the original image
     output_images_bgr = [cv2.cvtColor(out_img, cv2.COLOR_GRAY2BGR) for out_img in output_images]
 
     # # Stack the original image and each of the intermediate outputs side by side
     # combined_image = np.hstack([image] + output_images_bgr)
 
-    # Save the result
-    for i, output_image in enumerate(output_images_bgr):
-        output_path = os.path.join(dataset_path, "HED", layer_names[i], image_name)
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        cv2.imwrite(output_path, output_image)
+    if path:
+        for i, output_image in enumerate(output_images_bgr):
+            path = path.replace("PlAcEhOlDeR", str(i+1))
+            cv2.imwrite(path, output_image)
+            
 
-    print(f"Saved the combined image with HED edges at: {output_path}")
-
-# path = "/home/reddy/Bachelor_Thesis/examples/coco_data/images"
-dataset_path = "/data/reddy/Bachelor_Thesis/test_hed"
-
-# images = os.listdir(path)
-# images.sort()
+            if annotation:
+                temp_path = path
+                annotated_image = cv2.drawContours(output_image, [annotation[1]], 0, (255, 255, 255), 1)
+                #split tail and head
+                temp_path = f"{annotation[0]}/annotated_images/HED/{i+1}/" + os.path.split(path)[1]
+                cv2.imwrite(f"{temp_path}", annotated_image)
+            
+            path = path.replace(f"/{str(i+1)}/", "/PlAcEhOlDeR/")
+            
+    return output_images_bgr
 
 prototxt_path = 'Bachelor_Thesis/HED_Files/deploy.prototxt'
 caffemodel_path = 'Bachelor_Thesis/HED_Files/hed_pretrained_bsds.caffemodel'
 net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
-
-# for image_name in images:
-#     img = cv2.imread(f"{path}/{image_name}")
-
-#     canny_edge(img)
-#     active_canny(img)
-#     hed_edge(img, net)
-image_name = "test_hed.jpg"
-img = cv2.imread("/data/reddy/Bachelor_Thesis/cup_black/img2.jpg")
-# canny_edge(img)
-# active_canny(img)
-hed_edge(img, net)
+print("HED model loaded successfully")

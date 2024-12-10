@@ -1,21 +1,29 @@
 from ultralytics import YOLO
 import yaml
+import matplotlib
+
+matplotlib.use('Agg')
 
 #data.yaml
+path = "/data/reddy/Bachelor_Thesis/multimodel"
 yaml_data = {
-    "path": "/data/reddy/Bachelor_Thesis/dataset_honeycomb_tool/control",
+    "path": f"{path}/control",
     "train": "train/images",
     "val": "val/images",
     "test": "test/images",
     "names": {
-        0: "Honeycomb_Tool"
+        0: "Honeycomb_Wall_Tool",
+        1: "Honeycomb_Wall_Cup",
+        2: "Honeycomb_Wall_Pliers"
     }
 }
-with open ("/data/reddy/Bachelor_Thesis/data.yaml", "w") as file:
+with open (f"{path}/data.yaml", "w") as file:
     yaml.dump(yaml_data, file)
 
-for i in ["control", "active_canny", "HED/1", "HED/2"]:
-    
-    yaml_data["path"] = f"/data/reddy/Bachelor_Thesis/dataset_honeycomb_tool/{i}"
+for i in ["canny", "active_canny", "HED/1", "HED/2"]:
+    yaml_data["path"] = f"{path}/{i}"
+    with open (f"{path}/data.yaml", "w") as file:
+        yaml.dump(yaml_data, file)
+
     model = YOLO("yolo11x-obb.yaml").load("yolo11x.pt")
-    results = model.train(data="/data/reddy/Bachelor_Thesis/data.yaml", epochs=100, imgsz=640, project="/home/reddy/Bachelor_Thesis/trains", name=f"""train_honeycomb_tool_{"".join(i.split('/'))}""")
+    results = model.train(data=f"{path}/data.yaml", epochs=100, imgsz=640, project="/home/reddy/Bachelor_Thesis/trains", name=f"""multimodel_{"".join(i.split('/'))}""")

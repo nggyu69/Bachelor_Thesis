@@ -13,9 +13,18 @@ from ultralytics import YOLO
 import cv2
 import os
 import numpy as np
+import edge_detections
 
+models = {"multimodel_control" : ""}
 # Load the trained model
-model = YOLO('/home/reddy/Bachelor_Thesis/trains/transferred_train/weights/best.pt')
+for model_name in models:
+    model = YOLO(f'/home/reddy/Bachelor_Thesis/trains/{model_name}/weights/best.pt')
+    models[model_name] = model
+    print(f"Loaded model: {model_name}")
+
+model_name = "multimodel_control"
+model = models[model_name]
+
 
 # Directory containing the images to test
 image_dir = '/data/reddy/Bachelor_Thesis/tool_b'
@@ -34,9 +43,10 @@ for filename in sorted(os.listdir(image_dir)):
         # Load image in its original size
         img_path = os.path.join(image_dir, filename)
         img = cv2.imread(img_path)
+        # input_img = edge_detections.hed_edge(img)[0]
 
         # Run prediction on the original-sized image, saving results in a single folder
-        results = model.predict(img, save=True, save_dir=output_dir, conf=0.8)
+        results = model.predict(img, save=True, save_dir=output_dir, conf=0.9)
         
         # Save the visualized result and add it to the list for stitching
         result_image = results[0].plot()  # Visualize prediction
@@ -57,7 +67,7 @@ rows = [np.hstack(image_results[i*grid_size:(i+1)*grid_size]) for i in range(gri
 stitched_image = np.vstack(rows)  # Stack the rows vertically to form the grid
 
 # Save the stitched image
-stitched_image_path = os.path.join(output_dir, f'stitched_results_{image_dir.split("/")[-1]}_{grid_size}x{grid_size}.jpg')
+stitched_image_path = os.path.join(output_dir, f'stitched_results_{model_name}_{image_dir.split("/")[-1]}_{grid_size}x{grid_size}.jpg')
 cv2.imwrite(stitched_image_path, stitched_image)
 
 print(f"Stitched {grid_size}x{grid_size} image saved at: {stitched_image_path}")

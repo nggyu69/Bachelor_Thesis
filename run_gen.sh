@@ -28,13 +28,18 @@
 PYTHON_SCRIPT="Generate.py"
 
 # Number of instances to run sequentially
-NUM_INSTANCES=786
+NUM_INSTANCES=1000
 SECONDS=0
 
 # Run each instance sequentially
 for i in $(seq 1 $NUM_INSTANCES); do
-    # Run the BlenderProc script with the instance ID
-    blenderproc run "$PYTHON_SCRIPT" --num_images "1"
+    if (( i % 2 == 0 )); then
+        # Generate a black image
+        blenderproc run "$PYTHON_SCRIPT" --num_images "1" --color "#0f0f13"
+    else
+        # Generate a white image
+        blenderproc run "$PYTHON_SCRIPT" --num_images "1" --color "#FFFFFF"
+    fi
 done
 
 duration=$SECONDS

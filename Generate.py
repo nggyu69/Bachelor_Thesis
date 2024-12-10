@@ -13,6 +13,8 @@ instance_id = None
 for i, arg in enumerate(sys.argv):
     if arg == '--num_images':
         num_images = int(sys.argv[i + 1])
+    elif arg == '--color':
+        color = sys.argv[i + 1]
 
 bproc.init()
 # Load your scene while preserving settings
@@ -34,8 +36,7 @@ bpy.context.scene.view_settings.exposure = -3
 greenscreen = bpy.data.objects['GreenScreen']
 greenscreen = bproc.filter.one_by_attr(scene, "name", "GreenScreen")
 
-train_object = ""
-train_object_name = "Train_Honeycomb_Wall_Pliers_Cutter"
+
 for i, item in enumerate(scene):
         # if item.get_name().startswith("Train_"):
         #     if item.get_name().startswith(train_object_name):
@@ -52,9 +53,11 @@ for i, item in enumerate(scene):
         item.set_cp("category_id", 0)
         item.set_shading_mode("AUTO")
 
-object_path = "Blender_Files/Honeycomb NEW DOUBLE Wall pliers-cutter.stl"
+object_path = "Blender_Files/Honeycomb Cup for HC wall.stl"
+train_object = ""
+train_object_name = "Train_"+object_path.split("/")[-1].split(".")[0]
 # test_obj = bproc.loader.load_obj(object_path)
-bpy.ops.import_mesh.stl(filepath=object_path)
+bpy.ops.wm.stl_import(filepath=object_path)
 imported_objects = bpy.context.selected_objects
 
 for obj in imported_objects:
@@ -117,7 +120,8 @@ def init():
 
     set_object_random()
     # set_object_color("#FFFFFF", train_object_name)
-    set_object_color("#0f0f13", train_object_name)
+    # set_object_color("#0f0f13", train_object_name)
+    set_object_color(color, train_object_name)
 
 def set_object_color(new_color, object_name):
     obj = bpy.data.objects.get(object_name)

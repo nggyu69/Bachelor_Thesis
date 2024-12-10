@@ -1,0 +1,15 @@
+torch
+torchvision
+torchaudio
+numpy
+scipy
+tensorboard
+pillow
+opencv-python
+scikit-learn
+oyaml
+dominate
+ninja
+ftfy
+tqdm
+regex

@@ -5,7 +5,8 @@ import numpy as np
 import os
 import sys
 from PIL import Image, ImageFont, ImageDraw
-
+import edge_detections
+import informative_drawings.convert as informative_drawing
 
 def resize_pad_image(image, mask = False, new_shape=(640, 640)):
     # Resize image to fit into new_shape maintaining aspect ratio
@@ -75,116 +76,61 @@ def rle_to_binary_mask(rle):
 
     return binary_mask
 
-def resize_bounding_box(bbox, scale, pad_top, pad_left):
-    resized_bbox = []
-    for x, y in bbox:
-        new_x = x * scale + pad_left
-        new_y = y * scale + pad_top
-        resized_bbox.append((new_x, new_y))
+def resize_bounding_box(bbox, scale, pad_top, pad_left, margin=0.075):
+    """
+    Resizes a rotated bounding box with added margins while preserving its orientation.
+    
+    Args:
+        bbox (list): List of (x, y) coordinates of the bounding box.
+        scale (float): Scale factor used for resizing.
+        pad_top (int): Top padding added during image resizing.
+        pad_left (int): Left padding added during image resizing.
+        margin (float): Fraction of the bounding box dimensions to add as margin.
+        
+    Returns:
+        np.ndarray: Resized and adjusted bounding box coordinates with margins.
+    """
+    # Convert the bounding box to a NumPy array
+    bbox_array = np.array(bbox, dtype=np.float32)
+    
+    # Find the center of the box
+    rect = cv2.minAreaRect(bbox_array)
+    center, size, angle = rect  # center (x, y), size (width, height), and rotation angle
+    
+    # Add margin to the width and height
+    width, height = size
+    width += margin * width
+    height += margin * height
+
+    # Scale the center position
+    center_x = center[0] * scale + pad_left
+    center_y = center[1] * scale + pad_top
+    scaled_center = (center_x, center_y)
+
+    # Create the new rotated rectangle with the updated size
+    new_rect = (scaled_center, (width * scale, height * scale), angle)
+
+    # Get the four corners of the new bounding box
+    resized_bbox = cv2.boxPoints(new_rect)
+
     return resized_bbox
 
-def canny_edge(image, path):
-    # Convert image to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Apply Canny edge detection
-    edges = cv2.Canny(gray, threshold1=75, threshold2=75)
-
-    edges_color = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)  # Convert edges to BGR for stacking
-    # combined_image = np.hstack((image, edges_color))
-
-    cv2.imwrite(path, edges_color)
-
-def active_canny(image, path):
-    # Convert the image to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    # Compute the median of the pixel intensities
-    median_intensity = np.median(gray)
-
-    # Set lower and upper thresholds for Canny edge detection based on median intensity
-    # These constants can be adjusted for more or less sensitivity
-    sigma = 0.2
-    lower_threshold = int(max(0, (1.0 - sigma) * median_intensity))
-    upper_threshold = int(min(255, (1.0 + sigma) * median_intensity))
-
-    # Apply Canny edge detection with adaptive thresholds
-    edges = cv2.Canny(gray, lower_threshold, upper_threshold)
-
-    # Convert edges to BGR so it can be stacked with the original image
-    edges_color = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
-
-    # # Stack the original image and edge-detected image side by side
-    # combined_image = np.hstack((image, edges_color))
-
-    # Save the result
-    cv2.imwrite(path, edges_color)
-
-def hed_edge(image, path, net):
-    # Prepare the image for HED
-    (h, w) = image.shape[:2]
-    blob = cv2.dnn.blobFromImage(image, scalefactor=1.0, size=(w, h), mean=(104.00698793, 116.66876762, 122.67891434), swapRB=False, crop=False)
-
-    # Pass the image blob through the HED model
-    net.setInput(blob)
-
-    # Specify the layer names to capture intermediate outputs
-    layer_names = ['sigmoid-dsn1', 'sigmoid-dsn2', 'sigmoid-dsn3', 'sigmoid-dsn4', 'sigmoid-dsn5', 'sigmoid-fuse']
-    outputs = net.forward(layer_names)
-    
-    # Process and resize each output to match the original image dimensions
-    output_images = [(255 * cv2.resize(out[0, 0], (w, h))).astype("uint8") for out in outputs]
-
-    # Convert each edge map to BGR so it can be stacked with the original image
-    output_images_bgr = [cv2.cvtColor(out_img, cv2.COLOR_GRAY2BGR) for out_img in output_images]
-    # # Stack the original image and each of the intermediate outputs side by side
-    # combined_image = np.hstack([image] + output_images_bgr)
-
-    # Save the result
-    for i, output_image in enumerate(output_images_bgr):
-        #create path based on layer name
-
-        path = path.replace("PlAcEhOlDeR", str(i+1))
-        cv2.imwrite(path, output_image)
-        path = path.replace(f"/{str(i+1)}/", "/PlAcEhOlDeR/")
-    # cv2.imwrite(path, output_images_bgr[0])
-
-
-path = "/data/reddy/Bachelor_Thesis/part_2/coco_data"
-dataset_path = "/data/reddy/Bachelor_Thesis/dataset_honeycomb_tool"
-
-existing_images = []
-if os.path.exists(dataset_path + "/annotated_images"):
-    existing_images = [int(i.split("_")[-1][0:-4]) for i in os.listdir(dataset_path + "/annotated_images")]
-
-
-# path = "/data/reddy/coco_data"
-with open(path + "/coco_annotations.json") as f:
-    data = json.load(f)
-    annotations = data["annotations"]
-    images = data["images"]
-    categories = data["categories"]
-    categories = {category["id"]: category["name"] for category in categories}
-    # classes = {"Honeycomb Cup for HC wall" : 0}
-
-
-
-train_num = int(round(len(images) * 0.7))
-test_num = int(round(len(images) * 0.2))
-val_num = len(images) - train_num - test_num
-split_list = ["train" for i in range(train_num)] + ["test" for i in range(test_num)] + ["val" for i in range(val_num)]
-np.random.shuffle(split_list)
+paths = ["/data/reddy/Bachelor_Thesis/part_2/coco_data", "Bachelor_Thesis/gen_data/Train_Honeycomb Cup for HC wall", "Bachelor_Thesis/gen_data/Train_Honeycomb_Wall_Pliers_Cutter"]
+dataset_path = "/data/reddy/Bachelor_Thesis/multimodel2"
 
 os.makedirs(dataset_path + "/annotated_images", exist_ok=True)
 os.makedirs(dataset_path + "/masked_images", exist_ok=True)
 
-for i in ["control", "canny", "active_canny"]:
+for i in ["control", "canny", "active_canny", "anime_style", "contour_style", "opensketch_style"]:
     os.makedirs(dataset_path + f"/{i}/train/images", exist_ok=True)
     os.makedirs(dataset_path + f"/{i}/test/images", exist_ok=True)
     os.makedirs(dataset_path + f"/{i}/val/images", exist_ok=True)
     os.makedirs(dataset_path + f"/{i}/train/labels", exist_ok=True)
     os.makedirs(dataset_path + f"/{i}/test/labels", exist_ok=True)
     os.makedirs(dataset_path + f"/{i}/val/labels", exist_ok=True)
+
+    os.makedirs(dataset_path + f"/annotated_images/{i}", exist_ok=True)
 
 for i in range(1, 6):
     os.makedirs(dataset_path + "/HED/" + str(i) + "/train/images", exist_ok=True)
@@ -194,102 +140,118 @@ for i in range(1, 6):
     os.makedirs(dataset_path + "/HED/" + str(i) + "/test/labels", exist_ok=True)
     os.makedirs(dataset_path + "/HED/" + str(i) + "/val/labels", exist_ok=True)
 
+    os.makedirs(dataset_path + "/annotated_images/HED/" + str(i), exist_ok=True)
 
-annotations_grouped = {}
-for annotation in annotations:
-    image_id = annotation["image_id"]
-    if image_id not in annotations_grouped:
-        annotations_grouped[image_id] = []
-    annotations_grouped[image_id].append(annotation)
 
-prototxt_path = 'Bachelor_Thesis/HED_Files/deploy.prototxt'
-caffemodel_path = 'Bachelor_Thesis/HED_Files/hed_pretrained_bsds.caffemodel'
-net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
+existing_images = []
+if os.path.exists(dataset_path + "/annotated_images/control"):
+    existing_images = ["_".join(i.split("_")[2:])for i in os.listdir(dataset_path + "/annotated_images/control")]
 
-for image in annotations_grouped:
-    if image in existing_images:
-        print(f"Image {image} already exists in the dataset. Skipping...")
+# prototxt_path = 'Bachelor_Thesis/HED_Files/deploy.prototxt'
+# caffemodel_path = 'Bachelor_Thesis/HED_Files/hed_pretrained_bsds.caffemodel'
+# net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
+
+classes = {}
+
+for path in paths:
+    head, tail = os.path.split(path)
+    path = os.path.join(head, tail.replace(" ", "_"))
+    if not os.path.exists(path):
+        os.rename(os.path.join(head, tail), path)
+
+    if not os.path.exists(path + "/coco_annotations.json"):
         continue
-    img = cv2.imread(f"{path}/{images[image-2000]['file_name']}")
-    image_type = split_list.pop()
-    resized_image, scale, pad_top, pad_left = resize_pad_image(img)
+
+    print("Annotating images in", path)
+
+    with open(path + "/coco_annotations.json") as f:
+        data = json.load(f)
+        annotations = data["annotations"]
+        images = data["images"]
+        categories = data["categories"]
+        categories = {category["id"]: category["name"].replace(" ", "_") for category in categories}
+    # print(categories)
+    train_num = int(round(len(images) * 0.7))
+    test_num = int(round(len(images) * 0.2))
+    val_num = len(images) - train_num - test_num
+    split_list = ["train" for i in range(train_num)] + ["test" for i in range(test_num)] + ["val" for i in range(val_num)]
+    np.random.shuffle(split_list)
+
+
+    annotations_grouped = {}
+    for annotation in annotations:
+        image_id = annotation["image_id"]
+        if image_id not in annotations_grouped:
+            annotations_grouped[image_id] = []
+        annotations_grouped[image_id].append(annotation)
     
-    annotated_image = np.copy(resized_image)
-    mask_image = Image.fromarray(cv2.cvtColor(np.copy(resized_image), cv2.COLOR_BGR2RGB))
-
-    annotations_text = ""
-    for annotation in annotations_grouped[image]:
-        mask = rle_to_binary_mask(annotation["segmentation"]).astype(np.uint8)
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        largest_contour = max(contours, key=cv2.contourArea)
-        rect = cv2.minAreaRect(largest_contour)
-        (x,y),(w,h), a = rect
-        
-        box = cv2.boxPoints(rect)
-        box = np.intp(box) #turn into ints
-        resized_box = resize_bounding_box(box, scale, pad_top, pad_left)
-        resized_box = np.intp(resized_box)
-
-        Class = annotation["category_id"]
-        
-        annotations_text += f"{Class} {' '.join([str((coord/640)) for coord in resized_box.flatten()])}\n"
-        color = (0, 255, 0) if Class == 0 else (0, 0, 255)
-        annotated_image = cv2.drawContours(annotated_image, [resized_box], 0, color, 1)
-
-        mask = resize_pad_mask(mask)[0]
-        mask = mask.astype(np.uint8) * 255
-        mask_image.putalpha(255)
-        mask = Image.fromarray(mask, mode="L")
-        overlay = Image.new('RGBA', mask_image.size)
-        draw_ov = ImageDraw.Draw(overlay)
-        draw_ov.bitmap((0, 0), mask, fill=(color[2], color[1], color[0], 64))
-        mask_image = Image.alpha_composite(mask_image, overlay)
-
-    for i in ["control", "canny", "active_canny"]:
-        with open(f"{dataset_path}/{i}/{image_type}/labels/image_{image}.txt", "w") as f:
-            f.write(annotations_text)
-    for i in range(1, 6):
-        with open(f"{dataset_path}/HED/{i}/{image_type}/labels/image_{image}.txt", "w") as f:
-            f.write(annotations_text)    
+    for class_name in categories.values():
+        if class_name not in classes:
+            classes[class_name] = len(classes)
     
-    mask_image.save(f"{dataset_path}/masked_images/masked_image_{image}.png")
-    cv2.imwrite(f"{dataset_path}/annotated_images/annotated_image_{image}.jpg", annotated_image)
 
-    cv2.imwrite(f"{dataset_path}/control/{image_type}/images/image_{image}.jpg", resized_image)
+    for image in annotations_grouped:
 
-    canny_edge(resized_image, f"{dataset_path}/canny/{image_type}/images/image_{image}.jpg")
-    active_canny(resized_image, f"{dataset_path}/active_canny/{image_type}/images/image_{image}.jpg")
-    hed_edge(resized_image, f"{dataset_path}/HED/PlAcEhOlDeR/{image_type}/images/image_{image}.jpg",net)
-    print("Done image", image)
-
-
-
-#Converting new data to old dataset 
-
-# import os
-# import json
-# import sys
-
-# path = "/home/reddy/Bachelor_Thesis/examples/part_2/coco_data"
-# dataset_path = "/data/reddy/Bachelor_Thesis/dataset2"
-
-# existing_images = []
-# if os.path.exists(dataset_path + "/annotated_images"):
-#     existing_images = [int(i.split("_")[-1][0:-4]) for i in os.listdir(dataset_path + "/annotated_images")]
-
-# # path = "/data/reddy/coco_data"
-# with open(path + "/coco_annotations.json") as f:
-#     data = json.load(f)
-
-#     for image in data["images"]:
-#         image["id"] = int(image["id"]+2000)
-#         os.rename(path + "/" + image["file_name"], path + "/" + image["file_name"].split("/")[0] + "/" + f"{image['id']:06}.jpg")
-#         image["file_name"] = image["file_name"].split("/")[0] + "/" + f"{image['id']:06}.jpg"
-
-#     for annotation in data["annotations"]:
-#         annotation["image_id"] = int(annotation["image_id"]+2000)
+        img = cv2.imread(f"{path}/{images[image-len(images)]['file_name']}")
+        image_type = split_list.pop()
+        resized_image, scale, pad_top, pad_left = resize_pad_image(img)
         
+        annotated_image = np.copy(resized_image)
+        mask_image = Image.fromarray(cv2.cvtColor(np.copy(resized_image), cv2.COLOR_BGR2RGB))
 
-# with open(path + "/coco_annotations.json", "w") as f:
-#     json.dump(data, f)
+        annotations_text = ""
+        for annotation in annotations_grouped[image]:
+            mask = rle_to_binary_mask(annotation["segmentation"]).astype(np.uint8)
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            largest_contour = max(contours, key=cv2.contourArea)
+            rect = cv2.minAreaRect(largest_contour)
+            (x,y),(w,h), a = rect
+            
+            box = cv2.boxPoints(rect)
+            box = np.intp(box) #turn into ints
+            resized_box = resize_bounding_box(box, scale, pad_top, pad_left)
+            resized_box = np.intp(resized_box)
 
+            # Class = annotation["category_id"]
+            Class = classes[categories[annotation["category_id"]].replace(" ", "_")]
+            
+            annotations_text += f"{Class} {' '.join([str((coord/640)) for coord in resized_box.flatten()])}\n"
+
+            color = (0, 0, 0)
+            annotated_image = cv2.drawContours(annotated_image, [resized_box], 0, color, 1)
+
+            mask = resize_pad_mask(mask)[0]
+            mask = mask.astype(np.uint8) * 255
+            mask_image.putalpha(255)
+            mask = Image.fromarray(mask, mode="L")
+            overlay = Image.new('RGBA', mask_image.size)
+            draw_ov = ImageDraw.Draw(overlay)
+            draw_ov.bitmap((0, 0), mask, fill=(color[2]+255, color[1], color[0]+255, 64))
+            mask_image = Image.alpha_composite(mask_image, overlay)
+
+        class_name = [i for i in classes if classes[i]==Class][0]
+
+        if f"{class_name}_{image}.jpg" in existing_images:
+            print(f"Image {class_name}_{image} already exists in the dataset. Skipping...")
+            continue
+
+        for i in ["control", "canny", "active_canny"]:
+            with open(f"{dataset_path}/{i}/{image_type}/labels/image_{class_name}_{image}.txt", "w") as f:
+                f.write(annotations_text)
+        for i in range(1, 6):
+            with open(f"{dataset_path}/HED/{i}/{image_type}/labels/image_{class_name}_{image}.txt", "w") as f:
+                f.write(annotations_text)    
+        
+        mask_image.save(f"{dataset_path}/masked_images/masked_image_{class_name}_{image}.png")
+        cv2.imwrite(f"{dataset_path}/annotated_images/control/annotated_image_{class_name}_{image}.jpg", annotated_image)
+
+        cv2.imwrite(f"{dataset_path}/control/{image_type}/images/image_{class_name}_{image}.jpg", resized_image)
+
+        edge_detections.canny_edge(resized_image, f"{dataset_path}/canny/{image_type}/images/image_{class_name}_{image}.jpg", annotation=[dataset_path, resized_box])
+        edge_detections.active_canny(resized_image, f"{dataset_path}/active_canny/{image_type}/images/image_{class_name}_{image}.jpg", annotation=[dataset_path, resized_box])
+        edge_detections.hed_edge(resized_image, f"{dataset_path}/HED/PlAcEhOlDeR/{image_type}/images/image_{class_name}_{image}.jpg", annotation=[dataset_path, resized_box])
+        print(f"Done image {class_name}_{image}")
+
+for style in ["anime_style", "contour_style", "opensketch_style"]:
+    for split in ["train", "test", "val"]:
+        informative_drawing.process_images(f"{dataset_path}/control/{split}/images", f"{dataset_path}", style)
