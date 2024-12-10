@@ -2,6 +2,9 @@ import cv2
 from picamera2 import Picamera2
 import numpy as np
 from ultralytics import YOLO
+import os
+import sys
+# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # import edge_detections
 
 def preprocess(image, mask=False, new_shape=(640,640)):
@@ -47,8 +50,8 @@ output_width = 1280
 output_height = 960
 
 path = "/home/pi/Bachelor_Thesis/trains/multimodel_control/weights/best.pt"
-model = YOLO(path)
-
+# model = YOLO(path)
+count =1
 while True:
     # Capture the full frame
     frame = picam2.capture_array()
@@ -59,15 +62,17 @@ while True:
     # Rescale the frame to the desired size
     resized_frame = cv2.resize(frame_bgr, (output_width, output_height), interpolation=cv2.INTER_AREA)
 
-    resized_frame, scale, top, left = preprocess(resized_frame, mask=False, new_shape=(640,640))
+    # resized_frame, scale, top, left = preprocess(resized_frame, mask=False, new_shape=(640,640))
     # Display the rescaled frame
     cv2.imshow("Rescaled Video", resized_frame)
 
     # Exit on 'q' key press
     if cv2.waitKey(1) & 0xFF == ord(' '):
         print("Captured image, predicting...")
-        model.predict(resized_frame, save=True, project="predictions", name="control_predict", conf=0.7)
-        break
+        # model.predict(resized_frame, save=True, project="predictions", name="control_predict", conf=0.7)
+        cv2.imwrite(f"test_pics/{count}.jpg", resized_frame)
+        count += 1
+        
 
 # Stop the camera and close the window
 picam2.stop()
