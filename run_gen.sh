@@ -1,46 +1,78 @@
-# #!/bin/bash
-
-# # Path to your Python script
-# PYTHON_SCRIPT="Generate.py"
-
-# # Function to run the Python script
-# run_python_script() {
-#     blenderproc run "$PYTHON_SCRIPT"
-# }
-
-# # Infinite loop to ensure the script runs until successful exit
-# while true; do
-#     run_python_script
-#     exit_code=$?
-    
-#     # Check if the exit code is 0 (successful execution)
-#     if [ $exit_code -eq 69 ]; then
-#         echo "Python script executed successfully."
-#         break
-#     else
-#         echo "Python script failed with exit code $exit_code. Restarting..."
-#     fi
-# done
-
 #!/bin/bash
 
 # Path to your Python script
 PYTHON_SCRIPT="Generate.py"
 
-# Number of instances to run sequentially
-NUM_INSTANCES=1000
+# Directory containing STL files
+STL_DIR="$1"
+# Base directory to store generated files
+OUTPUT_DIR="gen_data"
+# Log file
+LOG_FILE="gen_log.txt"
+# Number of files to generate
+TARGET_FILES=1000
+#start time in python datetime format
+START_TIME=$(date +%s)
+# Ensure the STL directory is provided and exists
+if [ -z "$STL_DIR" ] || [ ! -d "$STL_DIR" ]; then
+    echo "Usage: $0 <path_to_stl_directory>"
+    exit 1
+fi
+
+# Trap to handle interruptions
+trap 'echo "Script interrupted at $(date)" >> "$LOG_FILE"; exit 1' SIGINT SIGTERM
+
 SECONDS=0
 
-# Run each instance sequentially
-for i in $(seq 1 $NUM_INSTANCES); do
-    if (( i % 2 == 0 )); then
-        # Generate a black image
-        blenderproc run "$PYTHON_SCRIPT" --num_images "1" --color "#0f0f13"
-    else
-        # Generate a white image
-        blenderproc run "$PYTHON_SCRIPT" --num_images "1" --color "#FFFFFF"
-    fi
-done
+# Function to count files in the output directory for a specific model
+count_files() {
+    find "$1" -maxdepth 1 -type f | wc -l
+}
 
-duration=$SECONDS
-echo "All instances completed in $((duration / 60)) minutes and $((duration % 60)) seconds."
+{
+    echo "Starting script at $(date)"
+    echo "STL directory: $STL_DIR"
+    echo "Output base directory: $OUTPUT_DIR"
+    echo "Target files: $TARGET_FILES"
+    echo "Python script: $PYTHON_SCRIPT"
+    echo "Log file: $LOG_FILE"
+    echo "PID: $$"
+
+    # Run for each STL file in the directory
+    for model_path in "$STL_DIR"*.stl; do
+        # Extract model name without extension
+        model_name=$(basename "$model_path" .stl)
+        # Create output directory for this model
+        model_output_dir="$OUTPUT_DIR/TrainData_$model_name/images"
+        mkdir -p "$model_output_dir"
+        
+        INITIAL_IMAGE_COUNT=$(count_files "$model_output_dir")
+
+        echo "Processing model: $model_path"
+        echo "Output directory: $model_output_dir"
+
+        # Continue running until the target number of files is reached
+        while (( $(count_files "$model_output_dir") < TARGET_FILES )); do
+            for i in $(seq 1 2); do
+                if (( i % 2 == 0 )); then
+                    # Generate a black image
+                    blenderproc run "$PYTHON_SCRIPT" --model_path "$model_path" --color "#0f0f13" --start_time "$START_TIME" --initial_count "$INITIAL_IMAGE_COUNT" 
+                else
+                    # Generate a white image
+                    blenderproc run "$PYTHON_SCRIPT" --model_path "$model_path" --color "#FFFFFF" --start_time "$START_TIME" --initial_count "$INITIAL_IMAGE_COUNT" 
+                fi
+
+                # Break the loop if the target file count is reached
+                if (( $(count_files "$model_output_dir") >= TARGET_FILES )); then
+                    echo "Target file count reached for $model_name. Moving to next model."
+                    break 2
+                else
+                    echo "Generated $(count_files "$model_output_dir") files for $model_name. Continuing..."
+                fi
+            done
+        done
+    done
+
+    duration=$SECONDS
+    echo "All instances completed at $(date) in $((duration / 60)) minutes and $((duration % 60)) seconds."
+} >> "$LOG_FILE" 2>&1

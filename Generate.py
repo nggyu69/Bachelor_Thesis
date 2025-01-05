@@ -7,18 +7,24 @@ import math
 import mathutils
 import time
 import sys
-import multiprocessing
+import argparse
+from datetime import datetime
+from datetime import timedelta
 
-instance_id = None
-for i, arg in enumerate(sys.argv):
-    if arg == '--num_images':
-        num_images = int(sys.argv[i + 1])
-    elif arg == '--color':
-        color = sys.argv[i + 1]
+parser = argparse.ArgumentParser()
+parser.add_argument('--color', type=str, default="#0f0f13", help='Color of the model')
+parser.add_argument('--model_path', type=str, help='Path to the 3D model')
+parser.add_argument('--start_time', type=int, help='Script start time in epoch seconds')
+parser.add_argument('--initial_count', type=int, help='Initial image count at the start of the script')
 
+args = parser.parse_args()
+color = args.color
+model_path = args.model_path
+start_time = args.start_time
+initial_image_count = args.initial_count
 bproc.init()
 # Load your scene while preserving settings
-scene = bproc.loader.load_blend("Blender_Files/Scene_Main_Temp.blend")
+scene = bproc.loader.load_blend("Blender_Files/Scene_Main.blend")
 
 bpy.context.scene.cycles.samples = 2048
 bpy.context.scene.cycles.use_light_tree = True
@@ -53,11 +59,11 @@ for i, item in enumerate(scene):
         item.set_cp("category_id", 0)
         item.set_shading_mode("AUTO")
 
-object_path = "Blender_Files/Honeycomb Cup for HC wall.stl"
+# model_path = "Blender_Files/Honeycomb Cup for HC wall.stl"
 train_object = ""
-train_object_name = "Train_"+object_path.split("/")[-1].split(".")[0]
-# test_obj = bproc.loader.load_obj(object_path)
-bpy.ops.wm.stl_import(filepath=object_path)
+train_object_name = model_path.split("/")[-1].split(".")[0]
+# test_obj = bproc.loader.load_obj(model_path)
+bpy.ops.wm.stl_import(filepath=model_path)
 imported_objects = bpy.context.selected_objects
 
 for obj in imported_objects:
@@ -202,7 +208,6 @@ def place_obj1_on_top_of_obj2(obj1, obj2):
     # Get min and max Z values for each object
     min_z1 = min(v.z for v in bbox1)
     max_z2 = max(v.z for v in bbox2)
-    print(min_z1, max_z2)
     # Calculate the required Z offset to place obj1 on top of obj2
     offset_z = max_z2 - min_z1
 
@@ -244,7 +249,7 @@ def render_scene():
     data = bproc.renderer.render()
 
     # Write the rendering into an hdf5 file
-    bproc.writer.write_coco_annotations(os.path.join(f"gen_data/{train_object_name}"),
+    bproc.writer.write_coco_annotations(os.path.join(f"gen_data/TrainData_{train_object_name}"),
                                         instance_segmaps=data["instance_segmaps"],
                                         instance_attribute_maps=data["instance_attribute_maps"],
                                         colors=data["colors"],
@@ -253,47 +258,22 @@ def render_scene():
 
 
 init()
-
 place_obj1_on_top_of_obj2(train_object, greenscreen.blender_obj)
+set_object_random()  # This updates the train_object position and rotation
 
-for i in range(num_images):
-    # Set random object position and rotation
-    set_object_random()  # This updates the train_object position and rotation
-    
-    # Insert keyframe for object's location and rotation
-    train_object.keyframe_insert(data_path="location", frame=i)
-    train_object.keyframe_insert(data_path="rotation_euler", frame=i)
-    bpy.context.view_layer.update()
-    # Set camera to look at the object and insert keyframe
-    point_camera_at_object(bpy.context.scene.camera, train_object, frame=i)
-    
+# Insert keyframe for object's location and rotation
+train_object.keyframe_insert(data_path="location", frame=0)
+train_object.keyframe_insert(data_path="rotation_euler", frame=0)
+bpy.context.view_layer.update()
+# Set camera to look at the object and insert keyframe
+point_camera_at_object(bpy.context.scene.camera, train_object, frame=0)
+
+current_time = datetime.now()
+elapsed_time = timedelta(seconds=(current_time.timestamp() - start_time))
+count = len(os.listdir(f"gen_data/TrainData_{train_object_name}/images"))
+generated_since_start = count - initial_image_count
+print(f"Current datetime: {current_time}\nCurrent images: {count}\nGenerated since start: {generated_since_start} in {elapsed_time}")
 # Render frames for each keyframe after setting up the scene
 render_scene()
-
-
-# ## Switch the viewport to camera view
-# for area in bpy.context.screen.areas:
-#     if area.type == 'VIEW_3D':  # Ensure it's the 3D viewport
-#         for space in area.spaces:
-#             if space.type == 'VIEW_3D':
-#                 space.region_3d.view_perspective = 'CAMERA'
-#                 break
-# bpy.context.view_layer.update()
-
-
-# print(f"Instance id {instance_id}")
-
-
-# try:
-#     count = len(os.listdir("examples/part_2/coco_data/images"))
-# except:
-#     count = 0
-
-# if count < 2000:
-#     set_object_random()
-#     render_scene()
-#     sys.exit(1)
-# else:
-#     sys.exit(69)
 
 
