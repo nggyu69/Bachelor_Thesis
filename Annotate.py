@@ -115,9 +115,9 @@ def resize_bounding_box(bbox, scale, pad_top, pad_left, margin=0.075):
     return resized_bbox
 
 
-paths = [f"/home/reddy/Bachelor_Thesis/gen_data/{i}" for i in os.listdir("/home/reddy/Bachelor_Thesis/gen_data")]
+paths = [f"/home/reddy/Bachelor_Thesis/gen_data/{i}" for i in os.listdir("/home/reddy/Bachelor_Thesis/gen_data")][:4]
 
-dataset_path = "/data/reddy/Bachelor_Thesis/datasets/8object_dataset"
+dataset_path = "/data/reddy/Bachelor_Thesis/datasets/4object_dataset"
 
 os.makedirs(dataset_path + "/annotated_images", exist_ok=True)
 os.makedirs(dataset_path + "/masked_images", exist_ok=True)
@@ -152,7 +152,14 @@ print("Existing images:", existing_images)
 # caffemodel_path = 'Bachelor_Thesis/HED_Files/hed_pretrained_bsds.caffemodel'
 # net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
 
-classes = {}
+# classes = {}
+yaml_data = {
+        "path": "",
+        "train": "train/images",
+        "val": "val/images",
+        "test": "test/images",
+        "names": {}
+    }
 
 for path in paths:
     head, tail = os.path.split(path)
@@ -177,20 +184,18 @@ for path in paths:
     val_num = len(images) - train_num - test_num
     split_list = ["train" for i in range(train_num)] + ["test" for i in range(test_num)] + ["val" for i in range(val_num)]
     np.random.shuffle(split_list)
-
-
+    
     annotations_grouped = {}
     for annotation in annotations:
         image_id = annotation["image_id"]
         if image_id not in annotations_grouped:
             annotations_grouped[image_id] = []
         annotations_grouped[image_id].append(annotation)
+    # for class_name in categories.values():
+    #     if class_name not in classes:
+    #         classes[class_name] = len(classes)
     
-    for class_name in categories.values():
-        if class_name not in classes:
-            classes[class_name] = len(classes)
     
-
     for image in annotations_grouped:
 
         img = cv2.imread(f"{path}/{images[image-len(images)]['file_name']}")
@@ -214,7 +219,7 @@ for path in paths:
             resized_box = np.intp(resized_box)
 
             # Class = annotation["category_id"]
-            Class = classes[categories[annotation["category_id"]].replace(" ", "_")]
+            Class = annotation["category_id"]
             
             annotations_text += f"{Class} {' '.join([str((coord/640)) for coord in resized_box.flatten()])}\n"
 
@@ -230,8 +235,10 @@ for path in paths:
             draw_ov.bitmap((0, 0), mask, fill=(color[2]+255, color[1], color[0]+255, 64))
             mask_image = Image.alpha_composite(mask_image, overlay)
 
-        class_name = [i for i in classes if classes[i]==Class][0]
-
+        # class_name = [i for i in classes if classes[i]==Class][0]
+        class_name = categories[Class]
+        yaml_data["names"][Class] = class_name
+            
         if f"{class_name}_{image}.jpg" in existing_images:
             print(f"Image {class_name}_{image} already exists in the dataset. Skipping...")
             continue
@@ -258,6 +265,8 @@ for path in paths:
         cv2.imwrite(f"{dataset_path}/annotated_images/control/annotated_image_{class_name}_{image}.jpg", annotated_image)
 
         print(f"Done image {class_name}_{image}")
+
+json.dump(yaml_data, open(f"{dataset_path}/data.yaml", "w"), indent=4)
 
 # for style in ["anime_style", "contour_style", "opensketch_style"]:
 #     for split in ["train", "test", "val"]:

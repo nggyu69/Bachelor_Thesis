@@ -10,6 +10,7 @@ import sys
 import argparse
 from datetime import datetime
 from datetime import timedelta
+import json
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--color', type=str, default="#0f0f13", help='Color of the model')
@@ -42,6 +43,7 @@ bpy.context.scene.view_settings.exposure = -3
 greenscreen = bpy.data.objects['GreenScreen']
 greenscreen = bproc.filter.one_by_attr(scene, "name", "GreenScreen")
 
+category_map = json.load(open("Blender_Files/models/category_map.json"))
 
 for i, item in enumerate(scene):
         # if item.get_name().startswith("Train_"):
@@ -101,7 +103,7 @@ for obj in imported_objects:
     train_object = obj
     break
 
-train_object["category_id"] = 1
+train_object["category_id"] = int([id for id, name in category_map.items() if name==train_object_name][0])
 train_object.scale = (0.001, 0.001, 0.001)
 
 

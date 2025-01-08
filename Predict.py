@@ -15,15 +15,17 @@ import os
 import numpy as np
 import edge_detections
 
+size = "x"
+dataset = "8object"
 models = {
-          "8object_control" : {"model" : "",  "preprocess" : None, "args" : None}, 
-          "8object_canny" : {"model" : "", "preprocess" : edge_detections.canny_edge, "args" : {"image" : ""}}, 
-          "8object_active_canny" : {"model" : "", "preprocess" : edge_detections.active_canny, "args" : {"image" : ""}},
-          "8object_HED1" : {"model" : "", "preprocess" : edge_detections.hed_edge, "args" : {"image" : "", "layer" : 1}},
-          "8object_HED2" : {"model" : "", "preprocess" : edge_detections.hed_edge, "args" : {"image" : "", "layer" : 2}},
-          "8object_anime_style" : {"model" : "", "preprocess" : edge_detections.info_drawing, "args" : {"image" : "", "model_name" : "anime_style"}},
-          "8object_contour_style" : {"model" : "", "preprocess" : edge_detections.info_drawing, "args" : {"image" : "", "model_name" : "contour_style"}},
-          "8object_opensketch_style" : {"model" : "", "preprocess" : edge_detections.info_drawing, "args" : {"image" : "", "model_name" : "opensketch_style"}},
+          f"{dataset}_{size}_control" : {"model" : "",  "preprocess" : None, "args" : None}, 
+          f"{dataset}_{size}_canny" : {"model" : "", "preprocess" : edge_detections.canny_edge, "args" : {"image" : ""}}, 
+          f"{dataset}_{size}_active_canny" : {"model" : "", "preprocess" : edge_detections.active_canny, "args" : {"image" : ""}},
+          f"{dataset}_{size}_HED1" : {"model" : "", "preprocess" : edge_detections.hed_edge, "args" : {"image" : "", "layer" : 1}},
+          f"{dataset}_{size}_HED2" : {"model" : "", "preprocess" : edge_detections.hed_edge, "args" : {"image" : "", "layer" : 2}},
+          f"{dataset}_{size}_anime_style" : {"model" : "", "preprocess" : edge_detections.info_drawing, "args" : {"image" : "", "model_name" : "anime_style"}},
+          f"{dataset}_{size}_contour_style" : {"model" : "", "preprocess" : edge_detections.info_drawing, "args" : {"image" : "", "model_name" : "contour_style"}},
+          f"{dataset}_{size}_opensketch_style" : {"model" : "", "preprocess" : edge_detections.info_drawing, "args" : {"image" : "", "model_name" : "opensketch_style"}},
           }
 
 def preprocess(model_name, model):
@@ -35,7 +37,7 @@ def preprocess(model_name, model):
 
 # Load the trained model
 for model_name in models:
-    models[model_name]["model"] = YOLO(f'/home/reddy/Bachelor_Thesis/trains/{model_name.split("_")[0]}/{model_name}/weights/best.pt')
+    models[model_name]["model"] = YOLO(f'/home/reddy/Bachelor_Thesis/trains/{dataset}/{dataset}_{size}/{model_name}/weights/best.pt')
     print(f"Loaded model: {model_name}")
 
 # model_name = "multimodel_HED1"
@@ -43,7 +45,7 @@ for model_name in models:
 
 # Directory containing the images to test
 image_dir = '/home/reddy/Bachelor_Thesis/Demonstrator/test_pics'
-output_dir = '/home/reddy/Bachelor_Thesis/predictions'
+output_dir = f'/home/reddy/Bachelor_Thesis/predictions/{dataset}/{dataset}_{size}'
 os.makedirs(output_dir, exist_ok=True)
 
 
