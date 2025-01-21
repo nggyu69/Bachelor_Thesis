@@ -116,7 +116,7 @@ def info_drawing(path="", **kwargs):
     image = kwargs["image"]
     model_name = kwargs["model_name"]
 
-    checkpoints_dir = "/home/reddy/Bachelor_Thesis/Info_Drawing_Files/checkpoints"
+    checkpoints_dir = f"{system_path}/Bachelor_Thesis/Info_Drawing_Files/checkpoints"
 
     with torch.no_grad():
         
@@ -167,7 +167,8 @@ def info_drawing(path="", **kwargs):
 
     return output_image
 
-prototxt_path = '/home/reddy/Bachelor_Thesis/HED_Files/deploy.prototxt'
-caffemodel_path = '/home/reddy/Bachelor_Thesis/HED_Files/hed_pretrained_bsds.caffemodel'
+system_path = "/home/reddy"
+prototxt_path = f'{system_path}/Bachelor_Thesis/HED_Files/deploy.prototxt'
+caffemodel_path = f'{system_path}/Bachelor_Thesis/HED_Files/hed_pretrained_bsds.caffemodel'
 net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
 print("HED model loaded successfully")
