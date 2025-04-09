@@ -1,14 +1,3 @@
-# from ultralytics import YOLO
-# import cv2
-
-# model = YOLO('/home/reddy/Bachelor_Thesis/trains/train_combined/weights/best.pt')
-
-# img = cv2.imread('/data/reddy/Bachelor_Thesis/img5.jpg')
-
-# results = model.predict(img, save = True, project = '/home/reddy/Bachelor_Thesis/predictions', conf = 0.8)
-
-
-
 from ultralytics import YOLO
 import cv2
 import os
@@ -44,8 +33,8 @@ for model_name in models:
 
 
 # Directory containing the images to test
-image_dir = '/home/reddy/Bachelor_Thesis/Demonstrator/test_pics'
-output_dir = f'/home/reddy/Bachelor_Thesis/predictions/{dataset}/{dataset}_{size}'
+image_dir = '/home/reddy/Bachelor_Thesis/test_files/all_black'
+output_dir = f'/home/reddy/Bachelor_Thesis/predictions/{dataset}/{dataset}_{size}/{image_dir.split("/")[-1]}'
 os.makedirs(output_dir, exist_ok=True)
 
 

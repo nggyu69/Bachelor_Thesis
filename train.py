@@ -13,10 +13,12 @@ def main():
     parser = argparse.ArgumentParser(description="Train YOLO model for different configurations.")
     parser.add_argument("--model", required=True, help="Model name (e.g., control, canny, etc.)")
     parser.add_argument("--dataset_path", required=True, help="Path to the dataset directory")
+    parser.add_argument("--model_size", default="n", help="Model size (default: n)")
     args = parser.parse_args()
 
     model_name = args.model
     dataset_path = args.dataset_path
+    model_size = args.model_size
 
     # Update the YAML configuration
     # yaml_data = {
@@ -37,7 +39,7 @@ def main():
     # }
 
     # yaml_data = json.loads(f"{dataset_path}/data.yaml")
-    yaml_data = yaml.load(open(f"{dataset_path}/data.yaml"), Loader=yaml.FullLoader)
+    yaml_data = yaml.load(open(f'{dataset_path}/data.yaml'), Loader=yaml.FullLoader)
     yaml_data["path"] = f"{dataset_path}/{model_name}"
     
     # Save the YAML configuration
@@ -45,7 +47,6 @@ def main():
     with open(yaml_path, "w") as file:
         yaml.dump(yaml_data, file)
     
-    model_size = "x"
     dataset_name = dataset_path.split("/")[-1].split("_")[0]
 
     project_dir = dataset_path.replace("datasets", "trains").replace("data/", "home/").replace("_dataset", "")

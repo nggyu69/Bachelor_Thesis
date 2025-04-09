@@ -167,6 +167,56 @@ def info_drawing(path="", **kwargs):
 
     return output_image
 
+
+def adaptive_threshold(path="", **kwargs):
+    image = kwargs["image"]
+    block_size = kwargs.get("block_size", 11)
+    c_value = kwargs.get("c_value", 2)
+
+    # Ensure block_size is odd and greater than 1
+    if block_size <= 1:
+        print(f"Warning: block_size ({block_size}) must be > 1. Setting to 3.")
+        block_size = 3
+    elif block_size % 2 == 0:
+        block_size += 1
+        print(f"Warning: block_size must be odd. Adjusting to {block_size}.")
+
+    # Convert image to grayscale for thresholding
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Apply adaptive thresholding
+    # cv2.ADAPTIVE_THRESH_MEAN_C: threshold is mean of neighborhood area - C
+    # cv2.ADAPTIVE_THRESH_GAUSSIAN_C: threshold is weighted sum (gaussian) - C
+    thresh_image = cv2.adaptiveThreshold(
+        gray,
+        255, # Max value to assign
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C, # Gaussian weighting is often preferred
+        cv2.THRESH_BINARY, # Standard thresholding type
+        block_size, # Neighborhood size
+        c_value # Constant to subtract
+    )
+
+    # Convert back to BGR for consistency and color drawing
+    thresh_image_bgr = cv2.cvtColor(thresh_image, cv2.COLOR_GRAY2BGR)
+
+    if path:
+        # Ensure directory exists if saving
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        cv2.imwrite(path, thresh_image_bgr)
+
+    if "annotation" in kwargs:
+        annotation = kwargs["annotation"]
+        # Draw on a copy
+        annotated_image = cv2.drawContours(thresh_image_bgr.copy(), [annotation[1]], 0, (255, 255, 255), 1) # White contour
+        # Construct annotated path
+        annotated_dir = f"{annotation[0]}/annotated_images/adaptive_threshold/" # Specific directory
+        os.makedirs(annotated_dir, exist_ok=True)
+        # Use original path's basename for the annotated file name
+        annotated_path = os.path.join(annotated_dir, os.path.basename(path)) if path else os.path.join(annotated_dir, "annotated_adaptive_thresh.png") # Default name if no path
+        cv2.imwrite(annotated_path, annotated_image)
+
+    return thresh_image_bgr
+
 system_path = "/home/reddy"
 prototxt_path = f'{system_path}/Bachelor_Thesis/HED_Files/deploy.prototxt'
 caffemodel_path = f'{system_path}/Bachelor_Thesis/HED_Files/hed_pretrained_bsds.caffemodel'

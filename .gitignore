@@ -2,3 +2,4 @@
 /trains
 /gen_data
 *.pt
+/benchmarks
