@@ -50,7 +50,7 @@ def main():
     dataset_name = dataset_path.split("/")[-1].split("_")[0]
 
     project_dir = dataset_path.replace("datasets", "trains").replace("data/", "home/").replace("_dataset", "")
-    project_dir += f"/{dataset_name}_{model_size}"
+    project_dir += f"/{dataset_name}_{model_size}_300epochs_75pat_realval"
     # project_dir = project_dir.replace("data", "home")
     save_name = f"{dataset_name}_{model_size}_{''.join(model_name.split('/'))}"
 
@@ -58,8 +58,11 @@ def main():
     # Load and train the YOLO model
     model = YOLO(f"yolo11{model_size}-obb.yaml").load(f"yolo11{model_size}.pt")
     results = model.train(data=yaml_path, 
-                          epochs=100, 
-                          imgsz=640, 
+                          epochs=300,
+                          imgsz=640,
+                          patience=75,
+                          batch=32,
+                          plots=True,
                           project=project_dir, 
                           name=save_name)
 

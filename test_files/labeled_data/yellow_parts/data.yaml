@@ -1,0 +1,11 @@
+train: train/images
+val: valid/images
+test: test/images
+
+names: 
+  0: bit_holder
+  1: bottle_holder
+  2: cup_holder
+  3: cutter_holder
+  4: scissor_holder
+  5: tool_holder

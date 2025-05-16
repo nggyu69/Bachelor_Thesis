@@ -2,22 +2,22 @@
 
 # Define the list of models
 models=(
-    # "control" 
-    # "canny" 
-    # "active_canny" 
-    # "HED/1" 
-    # "HED/2" 
-    # "anime_style" 
-    # "opensketch_style" 
-    # "contour_style"
+    "active_canny"
+    "anime_style" 
     "adaptive_threshold"
+    "canny"
+    "control" 
+    "contour_style"
+    "HED/1" 
+    "HED/2" 
+    "opensketch_style"
     )
 
 # Path to the dataset directory
-dataset_path="/data/reddy/Bachelor_Thesis/datasets/8object_dataset"
+dataset_path="/data/reddy/Bachelor_Thesis/datasets/publish_dataset"
 
 #loop through all sizes
-sizes=("x")
+sizes=("s")
 for size in "${sizes[@]}"; do
     # Loop through each model and run the Python training script
     for model in "${models[@]}"; do

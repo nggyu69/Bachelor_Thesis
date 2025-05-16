@@ -216,9 +216,11 @@ def process_image(image_path, label_path, model_name, save_image=True):
                 # Convert the box tensor to a list for drawing
                 coords = box.xyxyxyxy
                 pred_class = int(box.cls.item())
+                print("Pred class: ", pred_class)
                 if pred_class not in class_map:
                     continue
                 pred_class = class_map[pred_class]
+                print("Pred class converted: ", pred_class)
                 # conf = box.conf
                 pred_box = coords.cpu().numpy().flatten().tolist()               
                 # Add to predictions list for metrics calculation
@@ -280,111 +282,145 @@ def preprocess(model_name, model):
             img = img[int(model_name.split("HED")[-1])-1]
     return img
 
-def save_latex(save_path="metrics_table.tex"):
-    """
-    Generate LaTeX table with metrics and save it to a file.
-    
-    Args:
-        save_path (str): Path where to save the LaTeX file
-    """
-    # Create the LaTeX content as a string
-    latex_content = []
-    
-    latex_content.append("\\begin{table}[H]")
-    latex_content.append("    \\scriptsize")
-    latex_content.append(f"    \\caption{{Evaluation Metrics for {test_set}}}")
-    latex_content.append("    \\begin{tabular}{lcccccc}")
-    latex_content.append("        \\toprule")
-    latex_content.append("        \\textbf{Method} & \\textbf{Precision} & \\textbf{Recall} & \\textbf{F1-Score} & \\textbf{mAP} \\\\")
-    latex_content.append("        \\midrule")
-    latex_content.append("        \\textbf{Baseline} & & & & \\\\")
-    
-    # Default color method
-    if "control" in all_metrics:
-        p_mean = np.mean(all_metrics["control"]['precision'])
-        p_std = np.std(all_metrics["control"]['precision'])
-        r_mean = np.mean(all_metrics["control"]['recall'])
-        r_std = np.std(all_metrics["control"]['recall'])
-        f1_mean = np.mean(all_metrics["control"]['f1_score'])
-        f1_std = np.std(all_metrics["control"]['f1_score'])
-        map_mean = np.mean(all_metrics["control"]['mAP'])
-        map_std = np.std(all_metrics["control"]['mAP'])
-        latex_content.append(f"        Render & {p_mean:.3f} ± {p_std:.3f} & {r_mean:.3f} ± {r_std:.3f} & {f1_mean:.3f} ± {f1_std:.3f} & {map_mean:.3f} ± {map_std:.3f} \\\\")
-    else:
-        latex_content.append("        Render & X ± Y & X ± Y & X ± Y & X ± Y \\\\")
-    
-    latex_content.append("        \\midrule")
-    latex_content.append("        \\textbf{Edge Detection} & & & & \\\\")
-    
-    edge_methods = ["canny", "active_canny", "HED1", "HED2", "adaptive_threshold"]
+def save_latex(save_path="metrics_table.tex"):    
+    # Method name mapping
     method_display_names = {
+        "control": "Render",
         "canny": "Canny Edge",
         "active_canny": "Active Canny Edge",
         "HED1": "HED1",
         "HED2": "HED2",
-        "adaptive_threshold": "Adaptive Threshold"
-    }
-    
-    # Edge detections
-    for method in edge_methods:
-        if method in all_metrics:
-            p_mean = np.mean(all_metrics[method]['precision'])
-            p_std = np.std(all_metrics[method]['precision'])
-            r_mean = np.mean(all_metrics[method]['recall'])
-            r_std = np.std(all_metrics[method]['recall'])
-            f1_mean = np.mean(all_metrics[method]['f1_score'])
-            f1_std = np.std(all_metrics[method]['f1_score'])
-            map_mean = np.mean(all_metrics[method]['mAP'])
-            map_std = np.std(all_metrics[method]['mAP'])
-            display_name = method_display_names.get(method, method)
-            latex_content.append(f"        {display_name} & {p_mean:.3f} ± {p_std:.3f} & {r_mean:.3f} ± {r_std:.3f} & {f1_mean:.3f} ± {f1_std:.3f} & {map_mean:.3f} ± {map_std:.3f} \\\\")
-        else:
-            display_name = method_display_names.get(method, method)
-            latex_content.append(f"        {display_name} & X ± Y & X ± Y & X ± Y & X ± Y \\\\")
-    
-    latex_content.append("        \\midrule")
-    latex_content.append("        \\textbf{Style Transfer} & & & & \\\\")
-    
-    # Style transfer methods
-    style_methods = ["anime_style", "contour_style", "opensketch_style"]
-    style_display_names = {
+        "adaptive_threshold": "Adaptive Threshold",
         "anime_style": "Anime Style",
         "contour_style": "Contour Style",
         "opensketch_style": "OpenSketch Style"
     }
     
-    for method in style_methods:
-        if method in all_metrics:
-            p_mean = np.mean(all_metrics[method]['precision'])
-            p_std = np.std(all_metrics[method]['precision'])
-            r_mean = np.mean(all_metrics[method]['recall'])
-            r_std = np.std(all_metrics[method]['recall'])
-            f1_mean = np.mean(all_metrics[method]['f1_score'])
-            f1_std = np.std(all_metrics[method]['f1_score'])
-            map_mean = np.mean(all_metrics[method]['mAP'])
-            map_std = np.std(all_metrics[method]['mAP'])
-            display_name = style_display_names.get(method, method)
-            latex_content.append(f"        {display_name} & {p_mean:.3f} ± {p_std:.3f} & {r_mean:.3f} ± {r_std:.3f} & {f1_mean:.3f} ± {f1_std:.3f} & {map_mean:.3f} ± {map_std:.3f} \\\\")
+    # Create mapping from display names back to internal names for lookup
+    display_to_method = {v: k for k, v in method_display_names.items()}
+    
+    # Check if the file already exists
+    if os.path.exists(save_path):
+        # Read existing content
+        with open(save_path, 'r') as file:
+            existing_lines = file.readlines()
+        
+        # Process the lines and update only the needed values
+        for i, line in enumerate(existing_lines):
+            # Look for lines that contain method results
+            for display_name in method_display_names.values():
+                print(line.startswith(f"        {display_name} &"))
+                if line.startswith(f"        {display_name} &"):
+                    method = display_to_method[display_name]
+                    if method in all_metrics:
+                        # Update this line with new metrics
+                        p_mean = np.mean(all_metrics[method]['precision'])
+                        p_std = np.std(all_metrics[method]['precision'])
+                        r_mean = np.mean(all_metrics[method]['recall'])
+                        r_std = np.std(all_metrics[method]['recall'])
+                        f1_mean = np.mean(all_metrics[method]['f1_score'])
+                        f1_std = np.std(all_metrics[method]['f1_score'])
+                        map_mean = np.mean(all_metrics[method]['mAP'])
+                        map_std = np.std(all_metrics[method]['mAP'])
+                        
+                        existing_lines[i] = f"        {display_name} & {p_mean:.3f} ± {p_std:.3f} & {r_mean:.3f} ± {r_std:.3f} & {f1_mean:.3f} ± {f1_std:.3f} & {map_mean:.3f} ± {map_std:.3f} \\\\\n"
+                        break
+        
+        # Write the updated content back to file
+        with open(save_path, 'w') as file:
+            file.writelines(existing_lines)
+                
+        print(f"LaTeX table updated in {save_path}")
+        print("\nUpdated table content:")
+        print(''.join(existing_lines))
+        
+    else:
+        # Create the LaTeX content as a string if file doesn't exist
+        latex_content = []
+        
+        latex_content.append("\\begin{table}[H]")
+        latex_content.append("    \\scriptsize")
+        latex_content.append(f"    \\caption{{Evaluation Metrics for {test_set} and model size {size}}}")
+        latex_content.append("    \\begin{tabular}{lcccccc}")
+        latex_content.append("        \\toprule")
+        latex_content.append("        \\textbf{Method} & \\textbf{Precision} & \\textbf{Recall} & \\textbf{F1-Score} & \\textbf{mAP} \\\\")
+        latex_content.append("        \\midrule")
+        latex_content.append("        \\textbf{Baseline} & & & & \\\\")
+        
+        # Default color method
+        if "control" in all_metrics:
+            p_mean = np.mean(all_metrics["control"]['precision'])
+            p_std = np.std(all_metrics["control"]['precision'])
+            r_mean = np.mean(all_metrics["control"]['recall'])
+            r_std = np.std(all_metrics["control"]['recall'])
+            f1_mean = np.mean(all_metrics["control"]['f1_score'])
+            f1_std = np.std(all_metrics["control"]['f1_score'])
+            map_mean = np.mean(all_metrics["control"]['mAP'])
+            map_std = np.std(all_metrics["control"]['mAP'])
+            latex_content.append(f"        Render & {p_mean:.3f} ± {p_std:.3f} & {r_mean:.3f} ± {r_std:.3f} & {f1_mean:.3f} ± {f1_std:.3f} & {map_mean:.3f} ± {map_std:.3f} \\\\")
         else:
-            display_name = style_display_names.get(method, method)
-            latex_content.append(f"        {display_name} & X ± Y & X ± Y & X ± Y & X ± Y \\\\")
-    
-    latex_content.append("        \\bottomrule")
-    latex_content.append("    \\end{tabular}")
-    latex_content.append("\\end{table}")
-    
-    # Join all lines with newlines
-    full_content = "\n".join(latex_content)
-    
-    # Save to file
-    with open(save_path, 'w') as file:
-        file.write(full_content)
-    
-    print(f"LaTeX table saved to {save_path}")
-
-    # Also print to console for convenience
-    print("\nTable content:")
-    print(full_content)
+            latex_content.append("        Render & X ± Y & X ± Y & X ± Y & X ± Y \\\\")
+        
+        latex_content.append("        \\midrule")
+        latex_content.append("        \\textbf{Edge Detection} & & & & \\\\")
+        
+        edge_methods = ["canny", "active_canny", "HED1", "HED2", "adaptive_threshold"]
+        
+        # Edge detections
+        for method in edge_methods:
+            if method in all_metrics:
+                p_mean = np.mean(all_metrics[method]['precision'])
+                p_std = np.std(all_metrics[method]['precision'])
+                r_mean = np.mean(all_metrics[method]['recall'])
+                r_std = np.std(all_metrics[method]['recall'])
+                f1_mean = np.mean(all_metrics[method]['f1_score'])
+                f1_std = np.std(all_metrics[method]['f1_score'])
+                map_mean = np.mean(all_metrics[method]['mAP'])
+                map_std = np.std(all_metrics[method]['mAP'])
+                display_name = method_display_names.get(method, method)
+                latex_content.append(f"        {display_name} & {p_mean:.3f} ± {p_std:.3f} & {r_mean:.3f} ± {r_std:.3f} & {f1_mean:.3f} ± {f1_std:.3f} & {map_mean:.3f} ± {map_std:.3f} \\\\")
+            else:
+                display_name = method_display_names.get(method, method)
+                latex_content.append(f"        {display_name} & X ± Y & X ± Y & X ± Y & X ± Y \\\\")
+        
+        latex_content.append("        \\midrule")
+        latex_content.append("        \\textbf{Style Transfer} & & & & \\\\")
+        
+        # Style transfer methods
+        style_methods = ["anime_style", "contour_style", "opensketch_style"]
+        
+        for method in style_methods:
+            if method in all_metrics:
+                p_mean = np.mean(all_metrics[method]['precision'])
+                p_std = np.std(all_metrics[method]['precision'])
+                r_mean = np.mean(all_metrics[method]['recall'])
+                r_std = np.std(all_metrics[method]['recall'])
+                f1_mean = np.mean(all_metrics[method]['f1_score'])
+                f1_std = np.std(all_metrics[method]['f1_score'])
+                map_mean = np.mean(all_metrics[method]['mAP'])
+                map_std = np.std(all_metrics[method]['mAP'])
+                display_name = method_display_names.get(method, method)
+                latex_content.append(f"        {display_name} & {p_mean:.3f} ± {p_std:.3f} & {r_mean:.3f} ± {r_std:.3f} & {f1_mean:.3f} ± {f1_std:.3f} & {map_mean:.3f} ± {map_std:.3f} \\\\")
+            else:
+                display_name = method_display_names.get(method, method)
+                latex_content.append(f"        {display_name} & X ± Y & X ± Y & X ± Y & X ± Y \\\\")
+        
+        latex_content.append("        \\bottomrule")
+        latex_content.append("    \\end{tabular}")
+        latex_content.append("\\end{table}")
+        
+        # Join all lines with newlines
+        full_content = "\n".join(latex_content)
+        
+        # Save to file
+        with open(save_path, 'w') as file:
+            file.write(full_content)
+        
+        print(f"LaTeX table created and saved to {save_path}")
+        
+        # Also print to console for convenience
+        print("\nTable content:")
+        print(full_content)
 
 def run_metrics(model_name, save_path, save_image):
 
@@ -447,15 +483,16 @@ def run_metrics(model_name, save_path, save_image):
     
 
 if __name__ == "__main__":
-    name_map = {"bit_holder": 5,
-                "bottle_holder": 4,
-                "cup_holder": 1,
-                "cutter_holder": 6,
-                "scissor_holder": 0,
-                "tool_holder": 2,
-                }
+    name_map = {"bit_holder" : "0",
+                "bottle_holder" : "1",
+                "cup_holder" : "2",
+                "cutter_holder" : "3",
+                "scissor_holder" : "4",
+                "tool_holder" : "5",}
+    
     root_dir = "/home/reddy/Bachelor_Thesis/test_files/labeled_data/"
     test_sets = os.listdir(root_dir)
+    test_sets.sort()
 
     for test_set in test_sets:
         print(f"Processing test set : {test_set}")
@@ -466,19 +503,19 @@ if __name__ == "__main__":
         
         class_map = {}
         for class_no, class_name in yaml_data["names"].items():
-            class_map[name_map[class_name]] = class_no
+            class_map[int(name_map[class_name])] = int(class_no)
 
         print("Class map:", class_map)
 
-        for size in ["n", "s", "m", "l", "x"]:
-            dataset = "8object"
-            # size = "x"
+        for size in ["s"]:
+            dataset = "publish"
+            params = "75pat_realval"
             models = {
                     f"{dataset}_{size}_control" : {"model" : "",  "preprocess" : None, "args" : None}, 
                     f"{dataset}_{size}_canny" : {"model" : "", "preprocess" : edge_detections.canny_edge, "args" : {"image" : ""}}, 
                     f"{dataset}_{size}_active_canny" : {"model" : "", "preprocess" : edge_detections.active_canny, "args" : {"image" : ""}},
-                    # f"{dataset}_{size}_HED1" : {"model" : "", "preprocess" : edge_detections.hed_edge, "args" : {"image" : "", "layer" : 1}},
-                    # f"{dataset}_{size}_HED2" : {"model" : "", "preprocess" : edge_detections.hed_edge, "args" : {"image" : "", "layer" : 2}},
+                    f"{dataset}_{size}_HED1" : {"model" : "", "preprocess" : edge_detections.hed_edge, "args" : {"image" : "", "layer" : 1}},
+                    f"{dataset}_{size}_HED2" : {"model" : "", "preprocess" : edge_detections.hed_edge, "args" : {"image" : "", "layer" : 2}},
                     f"{dataset}_{size}_anime_style" : {"model" : "", "preprocess" : edge_detections.info_drawing, "args" : {"image" : "", "model_name" : "anime_style"}},
                     f"{dataset}_{size}_contour_style" : {"model" : "", "preprocess" : edge_detections.info_drawing, "args" : {"image" : "", "model_name" : "contour_style"}},
                     f"{dataset}_{size}_opensketch_style" : {"model" : "", "preprocess" : edge_detections.info_drawing, "args" : {"image" : "", "model_name" : "opensketch_style"}},
@@ -487,7 +524,7 @@ if __name__ == "__main__":
 
             for model_name in models:
                 #Uncomment to use normal model
-                models[model_name]["model"] = YOLO(f'/home/reddy/Bachelor_Thesis/trains/{dataset}/{dataset}_{size}/{model_name}/weights/best.pt')
+                models[model_name]["model"] = YOLO(f'/home/reddy/Bachelor_Thesis/trains/{dataset}/{dataset}_{params}_{size}/{model_name}/weights/best.pt')
                 #Uncomment to use openvino model
                 # models[model_name]["model"] = YOLO(f'/home/reddy/Bachelor_Thesis/trains/{dataset}/{dataset}_{size}/{model_name}/weights/best_openvino_model')
                 
@@ -501,10 +538,10 @@ if __name__ == "__main__":
                 }
 
             for model_name in models:
-                output_dir = f"/home/reddy/Bachelor_Thesis/benchmarks/metrics/{test_set}/{dataset}_{size}"
+                output_dir = f"/home/reddy/Bachelor_Thesis/benchmarks/metrics/{test_set}/{dataset}_{params}_{size}"
 
                 os.makedirs(f"{output_dir}/images/{'_'.join(model_name.split('_')[2:])}", exist_ok=True)
 
-                run_metrics(model_name, save_path=f"{output_dir}/images/{'_'.join(model_name.split('_')[2:])}", save_image=False)
+                run_metrics(model_name, save_path=f"{output_dir}/images/{'_'.join(model_name.split('_')[2:])}", save_image=True)
             
-            save_latex(f"{output_dir}/{dataset}_{size}_latex.tex")
+            save_latex(f"{output_dir}/{test_set}_{dataset}_{params}_{size}_latex.tex")

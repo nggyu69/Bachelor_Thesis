@@ -117,7 +117,7 @@ def resize_bounding_box(bbox, scale, pad_top, pad_left, margin=0.075):
 
 paths = [f"/home/reddy/Bachelor_Thesis/gen_data/{i}" for i in os.listdir("/home/reddy/Bachelor_Thesis/gen_data")][:]
 
-dataset_path = "/data/reddy/Bachelor_Thesis/datasets/8object_dataset"
+dataset_path = "/data/reddy/Bachelor_Thesis/datasets/publish_dataset"
 
 os.makedirs(dataset_path + "/annotated_images", exist_ok=True)
 os.makedirs(dataset_path + "/masked_images", exist_ok=True)
@@ -252,16 +252,16 @@ for path in paths:
         
         
 
-        # cv2.imwrite(f"{dataset_path}/control/{image_type}/images/image_{class_name}_{image}.jpg", resized_image)
+        cv2.imwrite(f"{dataset_path}/control/{image_type}/images/image_{class_name}_{image}.jpg", resized_image)
 
-        # edge_detections.canny_edge(f"{dataset_path}/canny/{image_type}/images/image_{class_name}_{image}.jpg", **{"image": resized_image, "annotation" : [dataset_path, resized_box]})
-        # edge_detections.active_canny(f"{dataset_path}/active_canny/{image_type}/images/image_{class_name}_{image}.jpg", **{"image": resized_image, "annotation" : [dataset_path, resized_box]})
-        # edge_detections.hed_edge(f"{dataset_path}/HED/PlAcEhOlDeR/{image_type}/images/image_{class_name}_{image}.jpg", **{"image": resized_image, "annotation" : [dataset_path, resized_box]})
-        # edge_detections.info_drawing(f"{dataset_path}/anime_style/{image_type}/images/image_{class_name}_{image}.jpg", **{"image": resized_image, "annotation" : [dataset_path, resized_box], "model_name" : "anime_style"})
-        # edge_detections.info_drawing(f"{dataset_path}/contour_style/{image_type}/images/image_{class_name}_{image}.jpg", **{"image": resized_image, "annotation" : [dataset_path, resized_box], "model_name" : "contour_style"})
-        # edge_detections.info_drawing(f"{dataset_path}/opensketch_style/{image_type}/images/image_{class_name}_{image}.jpg", **{"image": resized_image, "annotation" : [dataset_path, resized_box], "model_name" : "opensketch_style"})
+        edge_detections.canny_edge(f"{dataset_path}/canny/{image_type}/images/image_{class_name}_{image}.jpg", **{"image": resized_image, "annotation" : [dataset_path, resized_box]})
+        edge_detections.active_canny(f"{dataset_path}/active_canny/{image_type}/images/image_{class_name}_{image}.jpg", **{"image": resized_image, "annotation" : [dataset_path, resized_box]})
+        edge_detections.hed_edge(f"{dataset_path}/HED/PlAcEhOlDeR/{image_type}/images/image_{class_name}_{image}.jpg", **{"image": resized_image, "annotation" : [dataset_path, resized_box]})
+        edge_detections.info_drawing(f"{dataset_path}/anime_style/{image_type}/images/image_{class_name}_{image}.jpg", **{"image": resized_image, "annotation" : [dataset_path, resized_box], "model_name" : "anime_style"})
+        edge_detections.info_drawing(f"{dataset_path}/contour_style/{image_type}/images/image_{class_name}_{image}.jpg", **{"image": resized_image, "annotation" : [dataset_path, resized_box], "model_name" : "contour_style"})
+        edge_detections.info_drawing(f"{dataset_path}/opensketch_style/{image_type}/images/image_{class_name}_{image}.jpg", **{"image": resized_image, "annotation" : [dataset_path, resized_box], "model_name" : "opensketch_style"})
         
-        # mask_image.save(f"{dataset_path}/masked_images/masked_image_{class_name}_{image}.png")
+        mask_image.save(f"{dataset_path}/masked_images/masked_image_{class_name}_{image}.png")
         cv2.imwrite(f"{dataset_path}/annotated_images/control/annotated_image_{class_name}_{image}.jpg", annotated_image)
         edge_detections.adaptive_threshold(f"{dataset_path}/adaptive_threshold/{image_type}/images/image_{class_name}_{image}.jpg", **{"image": resized_image, "annotation" : [dataset_path, resized_box]})
         print(f"Done image {class_name}_{image}")
