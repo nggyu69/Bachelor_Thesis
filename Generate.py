@@ -19,10 +19,14 @@ parser.add_argument('--start_time', type=int, help='Script start time in epoch s
 parser.add_argument('--initial_count', type=int, help='Initial image count at the start of the script')
 
 args = parser.parse_args()
-color = args.color
-model_path = args.model_path
-start_time = args.start_time
-initial_image_count = args.initial_count
+# color = args.color
+# model_path = args.model_path
+# start_time = args.start_time
+# initial_image_count = args.initial_count
+color = "#0f0f13"
+model_path = "/home/fsociety/Code/Projects/Bachelor_Thesis/Blender_Files/models/bottle_holder.stl"
+start_time = time.time()
+initial_image_count = 0
 bproc.init()
 # Load your scene while preserving settings
 scene = bproc.loader.load_blend("Blender_Files/Scene_Main.blend")
@@ -63,11 +67,12 @@ for i, item in enumerate(scene):
 
 # model_path = "Blender_Files/Honeycomb Cup for HC wall.stl"
 train_object = ""
-train_object_name = model_path.split("/")[-1].split(".")[0]
+train_object_name = "_".join(model_path.split("/")[-1].split(".")[0].split())
 # test_obj = bproc.loader.load_obj(model_path)
 bpy.ops.wm.stl_import(filepath=model_path)
 imported_objects = bpy.context.selected_objects
 
+print(train_object_name)
 for obj in imported_objects:
     obj.name = train_object_name
 
@@ -117,9 +122,9 @@ def init():
     global light1
 
     bproc.camera.set_resolution(1280, 960)
-    bproc.camera.set_intrinsics_from_blender_params(lens=0.959931, lens_unit="FOV")
+    bproc.camera.set_intrinsics_from_blender_params(lens=1.309, lens_unit="FOV")
 
-    bpy.ops.object.light_add(type='AREA', radius=0.3)
+    bpy.ops.object.light_add(type='AREA', radius=0.2)
     bpy_light1 = bpy.context.object
     light1 = bproc.types.Light(blender_obj=bpy_light1)
 
@@ -168,8 +173,8 @@ def get_random_pose():
     # return [[x, y, z], [rotation.x, rotation.y, rotation.z], direction]
     train_object_dimensions = train_object.dimensions
     max_dim = max(train_object_dimensions.x, train_object_dimensions.y)
-    half_width_x = (0.46 - max_dim) / 2  # Half of the width along the x-axis
-    half_width_y = (0.5 - max_dim) / 2   # Half of the height along the y-axis
+    half_width_x = (0.3 - max_dim) / 2  # Half of the width along the x-axis
+    half_width_y = (0.3 - max_dim) / 2   # Half of the height along the y-axis
     # Generate random x, y coordinates within the box's range
     x = random.uniform(-half_width_x, half_width_x)
     y = random.uniform(-half_width_y, half_width_y)
@@ -179,20 +184,20 @@ def get_random_pose():
 
     return [[x, y, touch_z], [0, 0, roll]]
 
-def set_camera(pose=[[0, 0, 0.6], [0.33163, 0, 0]]):
+def set_camera(pose=[[0, -0.24, 0.4], [0.523599, 0, 0]]):
     pose_matrix = bproc.math.build_transformation_mat(pose[0], pose[1])
     bproc.camera.add_camera_pose(pose_matrix)
     # bproc.camera.set_resolution(640, 480)
-    bproc.camera.set_intrinsics_from_blender_params(lens=0.959931, lens_unit="FOV")
+    bproc.camera.set_intrinsics_from_blender_params(lens=1.309, lens_unit="FOV")
 
-def set_light(pose=[[0, 0, 0.7], [0, 0, 0]]):
+def set_light(pose=[[0.15, -0.15, 0.4], [0.523599, 0.523599, 0]]):
     global light1
 
     # light1_position = mathutils.Vector(pose[0]) - light1_offset * pose[2].normalized()
     
     light1.set_location(pose[0])
     light1.set_rotation_euler(pose[1])
-    light1.set_energy(12)
+    light1.set_energy(6)
 
 def set_object(pose=[[0, 0, 0], [0, 0, 0]]):
     # train_object.set_location(pose[0])
@@ -200,6 +205,16 @@ def set_object(pose=[[0, 0, 0], [0, 0, 0]]):
     train_object.location = pose[0]
     train_object.rotation_euler = pose[1]
     return
+
+def set_viewport_to_camera_view():
+    for area in bpy.context.screen.areas:
+        if area.type == 'VIEW_3D':
+            # Set view to camera
+            for space in area.spaces:
+                if space.type == 'VIEW_3D':
+                    space.region_3d.view_perspective = 'CAMERA'
+                    break
+            break
 
 def place_obj1_on_top_of_obj2(obj1, obj2):
     global touch_z
@@ -268,13 +283,13 @@ train_object.keyframe_insert(data_path="location", frame=0)
 train_object.keyframe_insert(data_path="rotation_euler", frame=0)
 bpy.context.view_layer.update()
 # Set camera to look at the object and insert keyframe
-point_camera_at_object(bpy.context.scene.camera, train_object, frame=0)
+# point_camera_at_object(bpy.context.scene.camera, train_object, frame=0)
 
 current_time = datetime.now()
 elapsed_time = timedelta(seconds=(current_time.timestamp() - start_time))
-count = len(os.listdir(f"gen_data/TrainData_{train_object_name}/images"))
-generated_since_start = count - initial_image_count
-print(f"Current datetime: {current_time}\nCurrent images: {count}\nGenerated since start: {generated_since_start} in {elapsed_time}")
+# count = len(os.listdir(f"gen_data/TrainData_{train_object_name}/images"))
+# generated_since_start = count - initial_image_count
+# print(f"Current datetime: {current_time}\nCurrent images: {count}\nGenerated since start: {generated_since_start} in {elapsed_time}")
 # Render frames for each keyframe after setting up the scene
 render_scene()
 
