@@ -1,0 +1,120 @@
+\begin{table}[H]
+    \scriptsize
+    \caption{Evaluation Metrics for black_parts_bg5 and model size s}
+    \begin{tabular}{lcccccc}
+        \toprule
+        \textbf{Method} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{mAP} \\
+        \midrule
+        \textbf{Baseline} & & & & \\
+        Render & 0.831 ± 0.370 & 0.485 ± 0.315 & 0.588 ± 0.315 & 0.487 ± 0.314 \\
+        \midrule
+        \textbf{Edge Detection} & & & & \\
+        Canny Edge & 0.758 ± 0.419 & 0.378 ± 0.270 & 0.485 ± 0.306 & 0.378 ± 0.273 \\
+        Active Canny Edge & 0.906 ± 0.264 & 0.515 ± 0.247 & 0.636 ± 0.237 & 0.512 ± 0.254 \\
+        HED1 & 0.016 ± 0.126 & 0.005 ± 0.042 & 0.008 ± 0.063 & 0.005 ± 0.042 \\
+        HED2 & 0.210 ± 0.407 & 0.075 ± 0.151 & 0.110 ± 0.217 & 0.075 ± 0.151 \\
+        Adaptive Threshold & 0.642 ± 0.457 & 0.325 ± 0.262 & 0.418 ± 0.310 & 0.326 ± 0.262 \\
+        \midrule
+        \textbf{Style Transfer} & & & & \\
+        Anime Style & 0.946 ± 0.177 & 0.690 ± 0.249 & 0.776 ± 0.209 & 0.690 ± 0.249 \\
+        Contour Style & 0.796 ± 0.394 & 0.482 ± 0.312 & 0.580 ± 0.326 & 0.481 ± 0.317 \\
+        OpenSketch Style & 0.868 ± 0.290 & 0.703 ± 0.306 & 0.758 ± 0.285 & 0.696 ± 0.312 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+\begin{table}[H]
+    \scriptsize
+    \caption{Evaluation Metrics for black_parts_bg1 and model size s}
+    \begin{tabular}{lcccccc}
+        \toprule
+        \textbf{Method} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{mAP} \\
+        \midrule
+        \textbf{Baseline} & & & & \\
+        Render & 0.995 ± 0.042 & 0.702 ± 0.212 & 0.803 ± 0.157 & 0.702 ± 0.212 \\
+        \midrule
+        \textbf{Edge Detection} & & & & \\
+        Canny Edge & 0.989 ± 0.059 & 0.686 ± 0.239 & 0.785 ± 0.178 & 0.686 ± 0.239 \\
+        Active Canny Edge & 0.937 ± 0.151 & 0.578 ± 0.152 & 0.700 ± 0.141 & 0.569 ± 0.152 \\
+        HED1 & 0.787 ± 0.410 & 0.376 ± 0.269 & 0.490 ± 0.299 & 0.376 ± 0.269 \\
+        HED2 & 0.948 ± 0.172 & 0.585 ± 0.234 & 0.700 ± 0.205 & 0.582 ± 0.234 \\
+        Adaptive Threshold & 0.751 ± 0.264 & 0.567 ± 0.260 & 0.635 ± 0.250 & 0.542 ± 0.269 \\
+        \midrule
+        \textbf{Style Transfer} & & & & \\
+        Anime Style & 0.930 ± 0.178 & 0.803 ± 0.242 & 0.848 ± 0.207 & 0.796 ± 0.248 \\
+        Contour Style & 0.995 ± 0.042 & 0.842 ± 0.200 & 0.898 ± 0.138 & 0.842 ± 0.200 \\
+        OpenSketch Style & 0.958 ± 0.109 & 0.844 ± 0.199 & 0.884 ± 0.155 & 0.837 ± 0.208 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+\begin{table}[H]
+    \scriptsize
+    \caption{Evaluation Metrics for black_parts_bg2 and model size s}
+    \begin{tabular}{lcccccc}
+        \toprule
+        \textbf{Method} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{mAP} \\
+        \midrule
+        \textbf{Baseline} & & & & \\
+        Render & 0.317 ± 0.465 & 0.131 ± 0.217 & 0.179 ± 0.276 & 0.131 ± 0.217 \\
+        \midrule
+        \textbf{Edge Detection} & & & & \\
+        Canny Edge & 0.233 ± 0.413 & 0.085 ± 0.149 & 0.123 ± 0.215 & 0.079 ± 0.142 \\
+        Active Canny Edge & 0.317 ± 0.465 & 0.114 ± 0.171 & 0.167 ± 0.247 & 0.114 ± 0.171 \\
+        HED1 & 0.017 ± 0.128 & 0.006 ± 0.043 & 0.008 ± 0.064 & 0.006 ± 0.043 \\
+        HED2 & 0.100 ± 0.300 & 0.044 ± 0.155 & 0.058 ± 0.185 & 0.044 ± 0.155 \\
+        Adaptive Threshold & 0.183 ± 0.376 & 0.074 ± 0.154 & 0.103 ± 0.213 & 0.074 ± 0.154 \\
+        \midrule
+        \textbf{Style Transfer} & & & & \\
+        Anime Style & 0.767 ± 0.413 & 0.410 ± 0.299 & 0.511 ± 0.318 & 0.418 ± 0.308 \\
+        Contour Style & 0.308 ± 0.457 & 0.117 ± 0.181 & 0.167 ± 0.251 & 0.117 ± 0.181 \\
+        OpenSketch Style & 0.778 ± 0.411 & 0.446 ± 0.318 & 0.543 ± 0.331 & 0.443 ± 0.316 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+\begin{table}[H]
+    \scriptsize
+    \caption{Evaluation Metrics for black_parts_bg4 and model size s}
+    \begin{tabular}{lcccccc}
+        \toprule
+        \textbf{Method} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{mAP} \\
+        \midrule
+        \textbf{Baseline} & & & & \\
+        Render & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 \\
+        \midrule
+        \textbf{Edge Detection} & & & & \\
+        Canny Edge & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 \\
+        Active Canny Edge & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 \\
+        HED1 & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 \\
+        HED2 & 0.033 ± 0.178 & 0.008 ± 0.045 & 0.013 ± 0.071 & 0.008 ± 0.045 \\
+        Adaptive Threshold & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 \\
+        \midrule
+        \textbf{Style Transfer} & & & & \\
+        Anime Style & 0.049 ± 0.216 & 0.010 ± 0.043 & 0.016 ± 0.071 & 0.010 ± 0.043 \\
+        Contour Style & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 \\
+        OpenSketch Style & 0.790 ± 0.398 & 0.335 ± 0.226 & 0.455 ± 0.270 & 0.337 ± 0.226 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+\begin{table}[H]
+    \scriptsize
+    \caption{Evaluation Metrics for black_parts_bg3 and model size s}
+    \begin{tabular}{lcccccc}
+        \toprule
+        \textbf{Method} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{mAP} \\
+        \midrule
+        \textbf{Baseline} & & & & \\
+        Render & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 \\
+        \midrule
+        \textbf{Edge Detection} & & & & \\
+        Canny Edge & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 \\
+        Active Canny Edge & 0.016 ± 0.127 & 0.003 ± 0.021 & 0.005 ± 0.036 & 0.003 ± 0.021 \\
+        HED1 & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 \\
+        HED2 & 0.279 ± 0.448 & 0.093 ± 0.160 & 0.137 ± 0.228 & 0.093 ± 0.160 \\
+        Adaptive Threshold & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 & 0.000 ± 0.000 \\
+        \midrule
+        \textbf{Style Transfer} & & & & \\
+        Anime Style & 0.016 ± 0.127 & 0.004 ± 0.032 & 0.007 ± 0.051 & 0.004 ± 0.032 \\
+        Contour Style & 0.033 ± 0.178 & 0.008 ± 0.047 & 0.013 ± 0.073 & 0.008 ± 0.047 \\
+        OpenSketch Style & 0.033 ± 0.178 & 0.008 ± 0.047 & 0.013 ± 0.073 & 0.008 ± 0.047 \\
+        \bottomrule
+    \end{tabular}
+\end{table}

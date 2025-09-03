@@ -8,7 +8,7 @@ STL_DIR="$1"
 # Base directory to store generated files
 OUTPUT_DIR="gen_data"
 # Log file
-LOG_FILE="gen_log.txt"
+LOG_FILE="logs/generate.log"
 # Number of files to generate
 TARGET_FILES=1000
 #start time in python datetime format

@@ -19,14 +19,14 @@ parser.add_argument('--start_time', type=int, help='Script start time in epoch s
 parser.add_argument('--initial_count', type=int, help='Initial image count at the start of the script')
 
 args = parser.parse_args()
-# color = args.color
-# model_path = args.model_path
-# start_time = args.start_time
-# initial_image_count = args.initial_count
-color = "#0f0f13"
-model_path = "/home/fsociety/Code/Projects/Bachelor_Thesis/Blender_Files/models/bottle_holder.stl"
-start_time = time.time()
-initial_image_count = 0
+color = args.color
+model_path = args.model_path
+start_time = args.start_time
+initial_image_count = args.initial_count
+# color = "#0f0f13"
+# model_path = "/home/fsociety/Code/Projects/Bachelor_Thesis/Blender_Files/models/bottle_holder.stl"
+# start_time = time.time()
+# initial_image_count = 0
 bproc.init()
 # Load your scene while preserving settings
 scene = bproc.loader.load_blend("Blender_Files/Scene_Main.blend")
@@ -108,7 +108,8 @@ for obj in imported_objects:
     train_object = obj
     break
 
-train_object["category_id"] = int([id for id, name in category_map.items() if name==train_object_name][0])
+# train_object["category_id"] = int([id for id, name in category_map.items() if name==train_object_name][0])
+train_object["category_id"] = 1
 train_object.scale = (0.001, 0.001, 0.001)
 
 
@@ -121,7 +122,7 @@ touch_z = 0.07
 def init():
     global light1
 
-    bproc.camera.set_resolution(1280, 960)
+    bproc.camera.set_resolution(1920, 1080)
     bproc.camera.set_intrinsics_from_blender_params(lens=1.309, lens_unit="FOV")
 
     bpy.ops.object.light_add(type='AREA', radius=0.2)
@@ -287,9 +288,9 @@ bpy.context.view_layer.update()
 
 current_time = datetime.now()
 elapsed_time = timedelta(seconds=(current_time.timestamp() - start_time))
-# count = len(os.listdir(f"gen_data/TrainData_{train_object_name}/images"))
-# generated_since_start = count - initial_image_count
-# print(f"Current datetime: {current_time}\nCurrent images: {count}\nGenerated since start: {generated_since_start} in {elapsed_time}")
+count = len(os.listdir(f"gen_data/TrainData_{train_object_name}/images"))
+generated_since_start = count - initial_image_count
+print(f"Current datetime: {current_time}\nCurrent images: {count}\nGenerated since start: {generated_since_start} in {elapsed_time}")
 # Render frames for each keyframe after setting up the scene
 render_scene()
 

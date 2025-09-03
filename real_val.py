@@ -51,31 +51,39 @@ def adjust_coordinates(box, scale, top, left):
         adjusted_box[i+1] = box[i+1] * scale + top
     return adjusted_box
 
-paths = [f"/home/reddy/Bachelor_Thesis/test_files/labeled_data/{i}" for i in os.listdir("/home/reddy/Bachelor_Thesis/test_files/labeled_data/") if not i.endswith("parts")]
+paths = [f"/home/reddy/Bachelor_Thesis/test_files/labeled_data/{i}" for i in os.listdir("/home/reddy/Bachelor_Thesis/test_files/labeled_data/")]
 paths.sort()
-dataset_path = "/data/reddy/Bachelor_Thesis/datasets/publish_dataset"
+dataset_path = "/data/reddy/Bachelor_Thesis/datasets/publish_dataset2"
 
 for path in paths:
-    class_name = "".join(path.split("/")[-1].split("_")[0])
-    count = 0
-    images = os.listdir(path + "/train/images")
-    images.sort()
-    name = "_".join(path.split("/")[-1].split("_")[:2])
-    
-    name_map = {"bit_holder" : "0",
-                "bottle_holder" : "1",
-                "cup_holder" : "2",
-                "cutter_holder" : "3",
-                "scissor_holder" : "4",
-                "tool_holder" : "5",}
-    
     os.makedirs(path + "/val/images", exist_ok=True)
     os.makedirs(path + "/val/labels", exist_ok=True)
 
+    class_name = "_".join(path.split("/")[-1].split("_"))
+    count = 0
+
+    exist_flag = False
+    if len(os.listdir(path + "/val/images")) > 0:
+        images = os.listdir(path + "/val/images")
+        exist_flag = True
+    else:
+        images = os.listdir(path + "/train/images")
+    images.sort()
+    name = "_".join(path.split("/")[-1].split("_")[:2])
+    
+
+    limit = len(images) // 2
+    if path.endswith("mixed"):
+        limit = 111
+    
     for image_name in images:
-        if(count < len(images)/2):
+        if(count < limit):
             count += 1
-            image_path = os.path.join(path + "/train/images", image_name)
+            
+            if exist_flag:
+                image_path = os.path.join(path + "/val/images", image_name)
+            else:
+                image_path = os.path.join(path + "/train/images", image_name)
             label_path = os.path.join(image_path.replace("images", "labels").replace(".jpg", ".txt"))
             print(image_path)
             print(label_path)
@@ -85,27 +93,33 @@ for path in paths:
             h, w = img.shape[:2]
 
             resized_image, scale, pad_top, pad_left = resize_pad_image(img)
-
-            box = read_label_file(label_path)
-            box = box[0][1]
-            denormalized_box = box.copy()
-            for i in range(0, len(box), 2):
-                denormalized_box[i] *= w
-                denormalized_box[i+1] *= h
-            
-            #Get pixel coordinates
-            adjusted_box_pixel = adjust_coordinates(denormalized_box, scale, pad_top, pad_left)
-            adjusted_box_pixel = np.array(adjusted_box_pixel).reshape(-1, 2).astype(np.float32)
-            
-            # Get normalized coordinates
-            adjusted_box_normalized = adjusted_box_pixel.copy()
-            for i in range(0, len(adjusted_box_normalized), 2):
-                adjusted_box_normalized[i] /= resized_image.shape[1]
-                adjusted_box_normalized[i+1] /= resized_image.shape[0]
-
-            contour = np.array(adjusted_box_pixel, dtype=np.int32).reshape(-1, 1, 2)
             annotated_image = resized_image.copy()
-            annotated_image = cv2.drawContours(annotated_image, [contour], 0, (0, 0, 255), 1)
+
+            annotation_text = ""
+
+            for box in read_label_file(label_path):
+
+                class_id = box[0]
+                box = box[1]
+                denormalized_box = box.copy()
+                for i in range(0, len(box), 2):
+                    denormalized_box[i] *= w
+                    denormalized_box[i+1] *= h
+                
+                #Get pixel coordinates
+                adjusted_box_pixel = adjust_coordinates(denormalized_box, scale, pad_top, pad_left)
+                adjusted_box_pixel = np.array(adjusted_box_pixel).reshape(-1, 2).astype(np.float32)
+                
+                # Get normalized coordinates
+                adjusted_box_normalized = adjusted_box_pixel.copy()
+                for i in range(0, len(adjusted_box_normalized), 2):
+                    adjusted_box_normalized[i] /= resized_image.shape[1]
+                    adjusted_box_normalized[i+1] /= resized_image.shape[0]
+            
+                annotation_text += f"{class_id} " + " ".join([f"{x:.6f}" for x in adjusted_box_normalized.flatten()]) + "\n"
+
+                contour = np.array(adjusted_box_pixel, dtype=np.int32).reshape(-1, 1, 2)            
+                annotated_image = cv2.drawContours(annotated_image, [contour], 0, (0, 0, 255), 1)
 
             cv2.imwrite(f"{dataset_path}/control/val/images/real_image_{class_name}_{count}.jpg", resized_image)
             cv2.imwrite(f"{dataset_path}/annotated_images/control/real_annotated_image_{class_name}_{count}.jpg", annotated_image)
@@ -118,8 +132,7 @@ for path in paths:
             edge_detections.info_drawing(f"{dataset_path}/opensketch_style/val/images/real_image_{class_name}_{count}.jpg", **{"image": resized_image, "annotation" : [dataset_path, contour], "model_name" : "opensketch_style"})
             edge_detections.adaptive_threshold(f"{dataset_path}/adaptive_threshold/val/images/real_image_{class_name}_{count}.jpg", **{"image": resized_image, "annotation" : [dataset_path, contour]})
             
-            class_id = name_map[name]
-            annotation_text = f"{class_id} " + " ".join([f"{x:.6f}" for x in adjusted_box_normalized.flatten()])
+            # class_id = name_map[name]
             for style in ["control", "canny", "active_canny", "anime_style", "contour_style", "opensketch_style", "adaptive_threshold"]:
                 with open(f"{dataset_path}/{style}/val/labels/real_image_{class_name}_{count}.txt", "w") as f:
                     f.write(annotation_text)

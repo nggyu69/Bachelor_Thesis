@@ -1,5 +1,6 @@
 /examples
 /trains
-/gen_data
+/gen_data*
 *.pt
 /benchmarks
+/test_files

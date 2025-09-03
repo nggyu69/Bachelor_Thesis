@@ -117,37 +117,45 @@ def resize_bounding_box(bbox, scale, pad_top, pad_left, margin=0.075):
 
 paths = [f"/home/reddy/Bachelor_Thesis/gen_data/{i}" for i in os.listdir("/home/reddy/Bachelor_Thesis/gen_data")][:]
 
-dataset_path = "/data/reddy/Bachelor_Thesis/datasets/publish_dataset"
+dataset_path_white = "/data/reddy/Bachelor_Thesis/datasets/publish_dataset_white"
+dataset_path_black = "/data/reddy/Bachelor_Thesis/datasets/publish_dataset_black"
 
-os.makedirs(dataset_path + "/annotated_images", exist_ok=True)
-os.makedirs(dataset_path + "/masked_images", exist_ok=True)
+# Create directories for both datasets
+for dataset_path in [dataset_path_white, dataset_path_black]:
+    os.makedirs(dataset_path + "/annotated_images", exist_ok=True)
+    os.makedirs(dataset_path + "/masked_images", exist_ok=True)
 
-for i in ["control", "canny", "active_canny", "anime_style", "contour_style", "opensketch_style", "adaptive_threshold"]:
-    os.makedirs(dataset_path + f"/{i}/train/images", exist_ok=True)
-    os.makedirs(dataset_path + f"/{i}/test/images", exist_ok=True)
-    os.makedirs(dataset_path + f"/{i}/val/images", exist_ok=True)
-    os.makedirs(dataset_path + f"/{i}/train/labels", exist_ok=True)
-    os.makedirs(dataset_path + f"/{i}/test/labels", exist_ok=True)
-    os.makedirs(dataset_path + f"/{i}/val/labels", exist_ok=True)
+    for i in ["control", "canny", "active_canny", "anime_style", "contour_style", "opensketch_style", "adaptive_threshold"]:
+        os.makedirs(dataset_path + f"/{i}/train/images", exist_ok=True)
+        os.makedirs(dataset_path + f"/{i}/test/images", exist_ok=True)
+        os.makedirs(dataset_path + f"/{i}/val/images", exist_ok=True)
+        os.makedirs(dataset_path + f"/{i}/train/labels", exist_ok=True)
+        os.makedirs(dataset_path + f"/{i}/test/labels", exist_ok=True)
+        os.makedirs(dataset_path + f"/{i}/val/labels", exist_ok=True)
 
-    os.makedirs(dataset_path + f"/annotated_images/{i}", exist_ok=True)
+        os.makedirs(dataset_path + f"/annotated_images/{i}", exist_ok=True)
 
-for i in range(1, 6):
-    os.makedirs(dataset_path + "/HED/" + str(i) + "/train/images", exist_ok=True)
-    os.makedirs(dataset_path + "/HED/" + str(i) + "/test/images", exist_ok=True)
-    os.makedirs(dataset_path + "/HED/" + str(i) + "/val/images", exist_ok=True)
-    os.makedirs(dataset_path + "/HED/" + str(i) + "/train/labels", exist_ok=True)
-    os.makedirs(dataset_path + "/HED/" + str(i) + "/test/labels", exist_ok=True)
-    os.makedirs(dataset_path + "/HED/" + str(i) + "/val/labels", exist_ok=True)
+    for i in range(1, 6):
+        os.makedirs(dataset_path + "/HED/" + str(i) + "/train/images", exist_ok=True)
+        os.makedirs(dataset_path + "/HED/" + str(i) + "/test/images", exist_ok=True)
+        os.makedirs(dataset_path + "/HED/" + str(i) + "/val/images", exist_ok=True)
+        os.makedirs(dataset_path + "/HED/" + str(i) + "/train/labels", exist_ok=True)
+        os.makedirs(dataset_path + "/HED/" + str(i) + "/test/labels", exist_ok=True)
+        os.makedirs(dataset_path + "/HED/" + str(i) + "/val/labels", exist_ok=True)
 
-    os.makedirs(dataset_path + "/annotated_images/HED/" + str(i), exist_ok=True)
+        os.makedirs(dataset_path + "/annotated_images/HED/" + str(i), exist_ok=True)
 
 
-existing_images = []
-if os.path.exists(dataset_path + "/annotated_images/control"):
-    existing_images = ["_".join(i.split("_")[2:])for i in os.listdir(dataset_path + "/annotated_images/control")]
+existing_images_white = []
+existing_images_black = []
+if os.path.exists(dataset_path_white + "/annotated_images/control"):
+    existing_images_white = ["_".join(i.split("_")[2:])for i in os.listdir(dataset_path_white + "/annotated_images/control")]
+if os.path.exists(dataset_path_black + "/annotated_images/control"):
+    existing_images_black = ["_".join(i.split("_")[2:])for i in os.listdir(dataset_path_black + "/annotated_images/control")]
 
-print("Existing images:", existing_images)
+print("Existing white images:", existing_images_white)
+print("Existing black images:", existing_images_black)
+
 # prototxt_path = 'Bachelor_Thesis/HED_Files/deploy.prototxt'
 # caffemodel_path = 'Bachelor_Thesis/HED_Files/hed_pretrained_bsds.caffemodel'
 # net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
@@ -199,6 +207,20 @@ for path in paths:
     for image in annotations_grouped:
 
         img = cv2.imread(f"{path}/{images[image-len(images)]['file_name']}")
+        
+        # Extract filename and determine if even or odd
+        filename = images[image-len(images)]['file_name']
+        # Extract number from filename (assuming format like 000000.jpg)
+        file_number = int(filename.split("/")[-1].split('.')[0])
+        
+        # Determine dataset path based on even/odd
+        if file_number % 2 == 0:
+            dataset_path = dataset_path_white
+            existing_images = existing_images_white
+        else:
+            dataset_path = dataset_path_black
+            existing_images = existing_images_black
+            
         image_type = split_list.pop()
         resized_image, scale, pad_top, pad_left = resize_pad_image(img)
         
@@ -224,7 +246,7 @@ for path in paths:
             annotations_text += f"{Class} {' '.join([str((coord/640)) for coord in resized_box.flatten()])}\n"
 
             color = (0, 0, 0)
-            annotated_image = cv2.drawContours(annotated_image, [resized_box], 0, color, 1)
+            annotated_image = cv2.drawContours(annotated_image, [resized_box.reshape(-1, 1, 2).astype(np.int32)], 0, color, 1)
 
             mask = resize_pad_mask(mask)[0]
             mask = mask.astype(np.uint8) * 255
@@ -264,9 +286,11 @@ for path in paths:
         mask_image.save(f"{dataset_path}/masked_images/masked_image_{class_name}_{image}.png")
         cv2.imwrite(f"{dataset_path}/annotated_images/control/annotated_image_{class_name}_{image}.jpg", annotated_image)
         edge_detections.adaptive_threshold(f"{dataset_path}/adaptive_threshold/{image_type}/images/image_{class_name}_{image}.jpg", **{"image": resized_image, "annotation" : [dataset_path, resized_box]})
-        print(f"Done image {class_name}_{image}")
+        print(f"Done image {class_name}_{image} -> {'White' if file_number % 2 == 0 else 'Black'} dataset")
 
-json.dump(yaml_data, open(f"{dataset_path}/data.yaml", "w"), indent=4)
+# Create separate yaml files for both datasets
+json.dump(yaml_data, open(f"{dataset_path_white}/data.yaml", "w"), indent=4)
+json.dump(yaml_data, open(f"{dataset_path_black}/data.yaml", "w"), indent=4)
 
 # for style in ["anime_style", "contour_style", "opensketch_style"]:
 #     for split in ["train", "test", "val"]:

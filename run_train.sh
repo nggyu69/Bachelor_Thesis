@@ -14,7 +14,7 @@ models=(
     )
 
 # Path to the dataset directory
-dataset_path="/data/reddy/Bachelor_Thesis/datasets/publish_dataset"
+dataset_path="/data/reddy/Bachelor_Thesis/datasets/publish_dataset_black"
 
 #loop through all sizes
 sizes=("s")

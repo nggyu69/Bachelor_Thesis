@@ -50,7 +50,7 @@ def main():
     dataset_name = dataset_path.split("/")[-1].split("_")[0]
 
     project_dir = dataset_path.replace("datasets", "trains").replace("data/", "home/").replace("_dataset", "")
-    project_dir += f"/{dataset_name}_{model_size}_300epochs_75pat_realval"
+    project_dir += f"/{dataset_name}_{model_size}_75pat_realval"
     # project_dir = project_dir.replace("data", "home")
     save_name = f"{dataset_name}_{model_size}_{''.join(model_name.split('/'))}"
 
