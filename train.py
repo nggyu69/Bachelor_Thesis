@@ -1,24 +1,31 @@
-import argparse
 from ultralytics import YOLO
 import yaml
 import os
 import yaml
 import sys
 import logging
+import json
+import json
 
 logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
 
 def main():
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Train YOLO model for different configurations.")
-    parser.add_argument("--model", required=True, help="Model name (e.g., control, canny, etc.)")
-    parser.add_argument("--dataset_path", required=True, help="Path to the dataset directory")
-    parser.add_argument("--model_size", default="n", help="Model size (default: n)")
-    args = parser.parse_args()
+    # Load config-only settings
+    with open("/home/reddy/Bachelor_Thesis/config.json", "r") as f:
+        config = json.load(f)
 
-    model_name = args.model
-    dataset_path = args.dataset_path
-    model_size = args.model_size
+    training_cfg = config.get("training", {})
+
+    model_name = training_cfg.get("model")
+    dataset_path = training_cfg.get("dataset_path")
+    model_size = training_cfg.get("model_size", "n")
+    epochs = training_cfg.get("epochs", 300)
+    imgsz = training_cfg.get("imgsz", 640)
+    patience = training_cfg.get("patience", 75)
+    batch = training_cfg.get("batch", 32)
+
+    if not model_name or not dataset_path:
+        raise SystemExit("model and dataset_path must be provided either via config or CLI.")
 
     # Update the YAML configuration
     # yaml_data = {
@@ -49,19 +56,22 @@ def main():
     
     dataset_name = dataset_path.split("/")[-1].split("_")[0]
 
+    project_suffix = training_cfg.get("project_suffix", "75pat_realval")
     project_dir = dataset_path.replace("datasets", "trains").replace("data/", "home/").replace("_dataset", "")
-    project_dir += f"/{dataset_name}_{model_size}_75pat_realval"
+    project_dir += f"/{dataset_name}_{model_size}_{project_suffix}"
     # project_dir = project_dir.replace("data", "home")
     save_name = f"{dataset_name}_{model_size}_{''.join(model_name.split('/'))}"
 
     
     # Load and train the YOLO model
-    model = YOLO(f"yolo11{model_size}-obb.yaml").load(f"yolo11{model_size}.pt")
+    yolo_cfg_pattern = training_cfg.get("yolo_config_pattern", "yolo11{size}-obb.yaml")
+    yolo_wts_pattern = training_cfg.get("yolo_weights_pattern", "yolo11{size}.pt")
+    model = YOLO(yolo_cfg_pattern.format(size=model_size)).load(yolo_wts_pattern.format(size=model_size))
     results = model.train(data=yaml_path, 
-                          epochs=300,
-                          imgsz=640,
-                          patience=75,
-                          batch=32,
+                          epochs=epochs,
+                          imgsz=imgsz,
+                          patience=patience,
+                          batch=batch,
                           plots=True,
                           project=project_dir, 
                           name=save_name)

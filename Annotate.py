@@ -7,6 +7,12 @@ import sys
 from PIL import Image, ImageFont, ImageDraw
 import edge_detections
 
+def load_config(config_path="/home/reddy/Bachelor_Thesis/config.json"):
+    with open(config_path, 'r') as f:
+        return json.load(f)
+
+config = load_config()
+
 def resize_pad_image(image, mask = False, new_shape=(640, 640)):
     # Resize image to fit into new_shape maintaining aspect ratio
     h, w = image.shape[:2]
@@ -115,10 +121,11 @@ def resize_bounding_box(bbox, scale, pad_top, pad_left, margin=0.075):
     return resized_bbox
 
 
-paths = [f"/home/reddy/Bachelor_Thesis/gen_data/{i}" for i in os.listdir("/home/reddy/Bachelor_Thesis/gen_data")][:]
+output_base_dir = config["paths"]["output_base_dir"]
+paths = [f"{output_base_dir}/{i}" for i in os.listdir(output_base_dir)][:]
 
-dataset_path_white = "/data/reddy/Bachelor_Thesis/datasets/publish_dataset_white"
-dataset_path_black = "/data/reddy/Bachelor_Thesis/datasets/publish_dataset_black"
+dataset_path_white = config["paths"]["dataset_white_dir"]
+dataset_path_black = config["paths"]["dataset_black_dir"]
 
 # Create directories for both datasets
 for dataset_path in [dataset_path_white, dataset_path_black]:

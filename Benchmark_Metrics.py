@@ -7,6 +7,7 @@ import sys
 from shapely.geometry import Polygon
 from collections import defaultdict
 import yaml
+import json
 
 def calculate_polygon_iou(box1, box2):
     """Calculate IoU between two polygons defined by 8 coordinates (xyxyxyxy)"""
@@ -472,6 +473,10 @@ def run_metrics(model_name, save_path, save_image):
     
 
 if __name__ == "__main__":
+    # Load config for paths
+    with open("/home/reddy/Bachelor_Thesis/config.json", "r") as f:
+        config = json.load(f)
+    paths_cfg = config.get("paths", {})
     name_map = {"bit_holder" : "0",
                 "bottle_holder" : "1",
                 "cup_holder" : "2",
@@ -479,7 +484,7 @@ if __name__ == "__main__":
                 "scissor_holder" : "4",
                 "tool_holder" : "5",}
     
-    root_dir = "/home/reddy/Bachelor_Thesis/test_files/test_set"
+    root_dir = paths_cfg.get("test_sets_dir", "/home/reddy/Bachelor_Thesis/test_files/test_set")
     test_sets = os.listdir(root_dir)
     test_sets.sort()
 
@@ -503,19 +508,20 @@ if __name__ == "__main__":
                     f"{dataset}_{size}_control" : {"model" : "",  "preprocess" : None, "args" : None}, 
                     f"{dataset}_{size}_canny" : {"model" : "", "preprocess" : edge_detections.canny_edge, "args" : {"image" : ""}}, 
                     f"{dataset}_{size}_active_canny" : {"model" : "", "preprocess" : edge_detections.active_canny, "args" : {"image" : ""}},
-                                    f"{dataset}_{size}_HED1" : {"model" : "", "preprocess" : edge_detections.hed_edge, "args" : {"image" : "", "layer" : 1}},
-                f"{dataset}_{size}_HED2" : {"model" : "", "preprocess" : edge_detections.hed_edge, "args" : {"image" : "", "layer" : 2}},
+                    f"{dataset}_{size}_HED1" : {"model" : "", "preprocess" : edge_detections.hed_edge, "args" : {"image" : "", "layer" : 1}},
+                    f"{dataset}_{size}_HED2" : {"model" : "", "preprocess" : edge_detections.hed_edge, "args" : {"image" : "", "layer" : 2}},
                     f"{dataset}_{size}_anime_style" : {"model" : "", "preprocess" : edge_detections.info_drawing, "args" : {"image" : "", "model_name" : "anime_style"}},
                     f"{dataset}_{size}_contour_style" : {"model" : "", "preprocess" : edge_detections.info_drawing, "args" : {"image" : "", "model_name" : "contour_style"}},
                     f"{dataset}_{size}_opensketch_style" : {"model" : "", "preprocess" : edge_detections.info_drawing, "args" : {"image" : "", "model_name" : "opensketch_style"}},
                     f"{dataset}_{size}_adaptive_threshold" : {"model" : "", "preprocess" : edge_detections.adaptive_threshold, "args" : {"image" : ""}},
                     }
 
+            trains_base = paths_cfg.get("trains_base_dir", "/home/reddy/Bachelor_Thesis/trains")
             for model_name in models:
                 #Uncomment to use normal model
-                models[model_name]["model"] = YOLO(f'/home/reddy/Bachelor_Thesis/trains/{dataset}/{dataset}_{params}_{size}/{model_name}/weights/best.pt')
+                models[model_name]["model"] = YOLO(f'{trains_base}/{dataset}/{dataset}_{params}_{size}/{model_name}/weights/best.pt')
                 #Uncomment to use openvino model
-                # models[model_name]["model"] = YOLO(f'/home/reddy/Bachelor_Thesis/trains/{dataset}/{dataset}_{size}/{model_name}/weights/best_openvino_model')
+                # models[model_name]["model"] = YOLO(f'{trains_base}/{dataset}/{dataset}_{size}/{model_name}/weights/best_openvino_model')
                 
                 print(f"Loaded model: {model_name}")
             #for table
@@ -525,8 +531,9 @@ if __name__ == "__main__":
 
 
 
+            benchmarks_base = paths_cfg.get("benchmarks_base_dir", "/data/reddy/Bachelor_Thesis/benchmarks")
             for model_name in models:
-                output_dir = f"/data/reddy/Bachelor_Thesis/benchmarks/metrics/{test_set}/{dataset}_{params}_{size}"
+                output_dir = f"{benchmarks_base}/metrics/{test_set}/{dataset}_{params}_{size}"
 
                 os.makedirs(f"{output_dir}/images/{'_'.join(model_name.split('_')[2:])}", exist_ok=True)
 

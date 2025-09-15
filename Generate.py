@@ -7,47 +7,76 @@ import math
 import mathutils
 import time
 import sys
-import argparse
 from datetime import datetime
 from datetime import timedelta
 import json
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--color', type=str, default="#0f0f13", help='Color of the model')
-parser.add_argument('--model_path', type=str, help='Path to the 3D model')
-parser.add_argument('--start_time', type=int, help='Script start time in epoch seconds')
-parser.add_argument('--initial_count', type=int, help='Initial image count at the start of the script')
+# Load configuration from JSON file
+def load_config(config_path="/home/reddy/Bachelor_Thesis/config.json"):
+    """Load configuration from JSON file"""
+    with open(config_path, 'r') as f:
+        return json.load(f)
 
-args = parser.parse_args()
-color = args.color
-model_path = args.model_path
-start_time = args.start_time
-initial_image_count = args.initial_count
-# color = "#0f0f13"
-# model_path = "/home/fsociety/Code/Projects/Bachelor_Thesis/Blender_Files/models/bottle_holder.stl"
-# start_time = time.time()
-# initial_image_count = 0
+# Load configuration
+config = load_config()
+
+# Extract configuration values
+color = config["model"]["color"]
+model_path = config["model"]["model_path"]
+start_time = config["timing"]["start_time"] if config["timing"]["start_time"] is not None else int(time.time())
+initial_image_count = config["timing"]["initial_count"]
+
+# Inlined rendering/camera/light/object parameters (moved from config)
+RENDER_SAMPLES = 2048
+MAX_BOUNCES = 12
+DIFFUSE_BOUNCES = 4
+GLOSSY_BOUNCES = 4
+TRANSMISSION_BOUNCES = 12
+VOLUME_BOUNCES = 2
+EXPOSURE = -3
+JPG_QUALITY = 200
+DENOISER = "INTEL"
+FILE_FORMAT = "JPEG"
+
+CAMERA_RESOLUTION = (1920, 1080)
+CAMERA_LENS = 1.309
+CAMERA_LENS_UNIT = "FOV"
+CAMERA_POSE = [[0, -0.24, 0.4], [0.523599, 0, 0]]
+
+LIGHT_TYPE = 'AREA'
+LIGHT_RADIUS = 0.2
+LIGHT_ENERGY = 6
+LIGHT_POSE = [[0.15, -0.15, 0.4], [0.523599, 0.523599, 0]]
+
+OBJECT_SCALE = (0.001, 0.001, 0.001)
+TOUCH_Z_DEFAULT = 0.07
+PLACEMENT_RADIUS = 0.3
+PLACEMENT_BOX_SIZE = 0.3
+
+# Initialize BlenderProc
 bproc.init()
-# Load your scene while preserving settings
-scene = bproc.loader.load_blend("Blender_Files/Scene_Main.blend")
 
-bpy.context.scene.cycles.samples = 2048
+# Load your scene while preserving settings - using absolute path from config
+scene = bproc.loader.load_blend(config["paths"]["scene_blend_file"])
+
+# Rendering settings (inlined)
+bpy.context.scene.cycles.samples = RENDER_SAMPLES
 bpy.context.scene.cycles.use_light_tree = True
-bpy.context.scene.cycles.max_bounces = 12        # Maximum total bounces
-bpy.context.scene.cycles.diffuse_bounces = 4      # Maximum diffuse bounces
-bpy.context.scene.cycles.glossy_bounces = 4       # Maximum glossy bounces
-bpy.context.scene.cycles.transmission_bounces = 12  # Maximum transmission bounces
-bpy.context.scene.cycles.volume_bounces = 2       # Maximum volume bounces
+bpy.context.scene.cycles.max_bounces = MAX_BOUNCES
+bpy.context.scene.cycles.diffuse_bounces = DIFFUSE_BOUNCES
+bpy.context.scene.cycles.glossy_bounces = GLOSSY_BOUNCES
+bpy.context.scene.cycles.transmission_bounces = TRANSMISSION_BOUNCES
+bpy.context.scene.cycles.volume_bounces = VOLUME_BOUNCES
 bpy.context.scene.render.use_simplify = False
 bpy.context.scene.cycles.use_spatial_splits = False
 bpy.context.scene.cycles.use_persistent_data = False
-bpy.context.scene.view_settings.exposure = -3
-
+bpy.context.scene.view_settings.exposure = EXPOSURE
 
 greenscreen = bpy.data.objects['GreenScreen']
 greenscreen = bproc.filter.one_by_attr(scene, "name", "GreenScreen")
 
-category_map = json.load(open("Blender_Files/models/category_map.json"))
+# Load category map using absolute path from config
+category_map = json.load(open(config["paths"]["category_map_file"]))
 
 for i, item in enumerate(scene):
         # if item.get_name().startswith("Train_"):
@@ -110,22 +139,24 @@ for obj in imported_objects:
 
 # train_object["category_id"] = int([id for id, name in category_map.items() if name==train_object_name][0])
 train_object["category_id"] = 1
-train_object.scale = (0.001, 0.001, 0.001)
+train_object.scale = OBJECT_SCALE
 
 
-radius = 0.3
+radius = PLACEMENT_RADIUS
 light1 = ""
 light1_offset = 1.0
 
-touch_z = 0.07
+touch_z = TOUCH_Z_DEFAULT
 
 def init():
     global light1
 
-    bproc.camera.set_resolution(1920, 1080)
-    bproc.camera.set_intrinsics_from_blender_params(lens=1.309, lens_unit="FOV")
+    # Camera settings (inlined)
+    bproc.camera.set_resolution(*CAMERA_RESOLUTION)
+    bproc.camera.set_intrinsics_from_blender_params(lens=CAMERA_LENS, lens_unit=CAMERA_LENS_UNIT)
 
-    bpy.ops.object.light_add(type='AREA', radius=0.2)
+    # Light settings (inlined)
+    bpy.ops.object.light_add(type=LIGHT_TYPE, radius=LIGHT_RADIUS)
     bpy_light1 = bpy.context.object
     light1 = bproc.types.Light(blender_obj=bpy_light1)
 
@@ -174,8 +205,9 @@ def get_random_pose():
     # return [[x, y, z], [rotation.x, rotation.y, rotation.z], direction]
     train_object_dimensions = train_object.dimensions
     max_dim = max(train_object_dimensions.x, train_object_dimensions.y)
-    half_width_x = (0.3 - max_dim) / 2  # Half of the width along the x-axis
-    half_width_y = (0.3 - max_dim) / 2   # Half of the height along the y-axis
+    box_size = PLACEMENT_BOX_SIZE
+    half_width_x = (box_size - max_dim) / 2  # Half of the width along the x-axis
+    half_width_y = (box_size - max_dim) / 2   # Half of the height along the y-axis
     # Generate random x, y coordinates within the box's range
     x = random.uniform(-half_width_x, half_width_x)
     y = random.uniform(-half_width_y, half_width_y)
@@ -185,20 +217,23 @@ def get_random_pose():
 
     return [[x, y, touch_z], [0, 0, roll]]
 
-def set_camera(pose=[[0, -0.24, 0.4], [0.523599, 0, 0]]):
+def set_camera(pose=None):
+    if pose is None:
+        pose = CAMERA_POSE
     pose_matrix = bproc.math.build_transformation_mat(pose[0], pose[1])
     bproc.camera.add_camera_pose(pose_matrix)
     # bproc.camera.set_resolution(640, 480)
-    bproc.camera.set_intrinsics_from_blender_params(lens=1.309, lens_unit="FOV")
+    bproc.camera.set_intrinsics_from_blender_params(lens=CAMERA_LENS, lens_unit=CAMERA_LENS_UNIT)
 
-def set_light(pose=[[0.15, -0.15, 0.4], [0.523599, 0.523599, 0]]):
+def set_light(pose=None):
     global light1
 
-    # light1_position = mathutils.Vector(pose[0]) - light1_offset * pose[2].normalized()
+    if pose is None:
+        pose = LIGHT_POSE
     
     light1.set_location(pose[0])
     light1.set_rotation_euler(pose[1])
-    light1.set_energy(6)
+    light1.set_energy(LIGHT_ENERGY)
 
 def set_object(pose=[[0, 0, 0], [0, 0, 0]]):
     # train_object.set_location(pose[0])
@@ -257,21 +292,22 @@ def point_camera_at_object(camera_obj, target_object, frame=0):
     bproc.camera.add_camera_pose(camera_pose, frame=frame)
 
 def render_scene():
-    # Render the scene
+    # Render the scene with inlined settings
     bproc.renderer.enable_experimental_features()
     bproc.renderer.enable_normals_output()
     bproc.renderer.enable_segmentation_output(map_by=["category_id", "instance", "name"], default_values={"category_id": None})
-    bproc.renderer.set_max_amount_of_samples(2048)
-    bproc.renderer.set_denoiser("INTEL")
-    bproc.renderer.set_output_format(file_format="JPEG", jpg_quality=200)
+    bproc.renderer.set_max_amount_of_samples(RENDER_SAMPLES)
+    bproc.renderer.set_denoiser(DENOISER)
+    bproc.renderer.set_output_format(file_format=FILE_FORMAT, jpg_quality=JPG_QUALITY)
     data = bproc.renderer.render()
 
-    # Write the rendering into an hdf5 file
-    bproc.writer.write_coco_annotations(os.path.join(f"gen_data/TrainData_{train_object_name}"),
+    # Write the rendering using absolute output path from config
+    output_path = os.path.join(config["paths"]["output_base_dir"], f"TrainData_{train_object_name}")
+    bproc.writer.write_coco_annotations(output_path,
                                         instance_segmaps=data["instance_segmaps"],
                                         instance_attribute_maps=data["instance_attribute_maps"],
                                         colors=data["colors"],
-                                        color_file_format="JPEG")
+                                        color_file_format=FILE_FORMAT)
     # bproc.writer.write_hdf5("output/", data)
 
 
@@ -288,10 +324,12 @@ bpy.context.view_layer.update()
 
 current_time = datetime.now()
 elapsed_time = timedelta(seconds=(current_time.timestamp() - start_time))
-count = len(os.listdir(f"gen_data/TrainData_{train_object_name}/images"))
+images_dir = os.path.join(config["paths"]["output_base_dir"], f"TrainData_{train_object_name}", "images")
+count = len(os.listdir(images_dir)) if os.path.exists(images_dir) else 0
 generated_since_start = count - initial_image_count
 print(f"Current datetime: {current_time}\nCurrent images: {count}\nGenerated since start: {generated_since_start} in {elapsed_time}")
 # Render frames for each keyframe after setting up the scene
 render_scene()
+
 
 
